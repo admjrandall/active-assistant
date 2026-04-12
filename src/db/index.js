@@ -16,8 +16,9 @@ export { openDatabase, seedDatabase } from './offline.js'
 export { getMsalApp }                 from './m365.js'
 
 // Default to vault mode — never fall back to unencrypted IndexedDB in production
+// Migrate stale 'offline' from old app versions; only 'vault' and 'm365' are valid
 const _stored = localStorage.getItem(STORAGE_MODE_KEY)
-let _activeMode = _stored || 'vault'
+let _activeMode = (_stored === 'm365') ? 'm365' : 'vault'
 
 function resolveDB(mode) {
   if (mode === 'm365')    return DataverseDB

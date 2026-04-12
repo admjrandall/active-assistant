@@ -84,10 +84,10 @@ const App = () => {
     setClients(c); setCommunications(comms)
   }, [activeDB])
 
-  // ── Vault auto-save ───────────────────────────────────────────────────────────
+  // ── Vault auto-save (Gist mode only) ─────────────────────────────────────────
   const persistVault = useCallback(async () => {
     const ctx = vaultCtxRef.current
-    if (!ctx) return
+    if (!ctx || ctx.mode !== 'gist') return
     setSaveStatus('saving')
     try {
       const snapshot  = VaultDB.getSnapshot()
@@ -101,6 +101,29 @@ const App = () => {
     }
   }, [])
 
+  // ── Download encrypted vault file (file mode) ─────────────────────────────────
+  const downloadVault = useCallback(async () => {
+    const ctx = vaultCtxRef.current
+    if (!ctx) return
+    setSaveStatus('saving')
+    try {
+      const snapshot  = VaultDB.getSnapshot()
+      const encrypted = await encryptVault(snapshot, ctx.password)
+      const blob = new Blob([encrypted], { type: 'application/octet-stream' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = 'active-assistant-vault.dat'
+      a.click()
+      URL.revokeObjectURL(url)
+      setSaveStatus('saved')
+    } catch (err) {
+      console.error('[Vault download]', err)
+      setSaveStatus('error')
+      showToast('Failed to prepare vault file for download.')
+    }
+  }, [])
+
   // Stable debounced version (recreated only when persistVault changes)
   const debouncedPersist = useCallback(
     debounce(() => persistVault(), AUTO_SAVE_DEBOUNCE_MS),
@@ -108,10 +131,16 @@ const App = () => {
   )
 
   // ── Called by VaultUnlock when the user successfully decrypts ─────────────────
-  const handleVaultUnlocked = useCallback(async ({ token, gistId, password }) => {
-    vaultCtxRef.current = { token, gistId, password }
-    // Wire auto-save: every VaultDB put/delete triggers debouncedPersist
-    VaultDB.onDataChange(debouncedPersist)
+  const handleVaultUnlocked = useCallback(async ({ token, gistId, password, mode }) => {
+    vaultCtxRef.current = { token, gistId, password, mode }
+    if (mode === 'file') {
+      // File mode: track unsaved state only — user downloads manually
+      VaultDB.onDataChange(() => setSaveStatus('unsaved'))
+      setSaveStatus('saved')
+    } else {
+      // Gist mode: auto-save to GitHub on every change
+      VaultDB.onDataChange(debouncedPersist)
+    }
     setStorageMode('vault')
     setStorageModeState('vault')
     setActiveDB(VaultDB)
@@ -121,9 +150,14 @@ const App = () => {
 
   // ── Lock vault: save immediately, wipe RAM, back to unlock screen ─────────────
   const handleLockVault = useCallback(async () => {
+    const ctx = vaultCtxRef.current
     setSaveStatus('saving')
     try {
-      await persistVault()
+      if (ctx?.mode === 'file') {
+        await downloadVault()   // triggers browser download before wiping
+      } else {
+        await persistVault()
+      }
     } finally {
       VaultDB.clear()
       vaultCtxRef.current = null
@@ -132,7 +166,7 @@ const App = () => {
       setProjects([]); setTasks([]); setPeople([])
       setDepartments([]); setClients([]); setCommunications([])
     }
-  }, [persistVault])
+  }, [persistVault, downloadVault])
 
   // ── M365 mode ─────────────────────────────────────────────────────────────────
   const switchToM365 = async () => {
@@ -168,6 +202,13 @@ const App = () => {
 
   // ── On first load: try M365 re-auth if that was the last mode ─────────────────
   useEffect(() => {
+    // MSAL creates hidden iframes that Chrome blocks on file:// — skip M365 entirely
+    if (window.location.protocol === 'file:') {
+      if (storageMode === 'm365') {
+        setStorageMode('vault'); setStorageModeState('vault')
+      }
+      return
+    }
     if (storageMode === 'm365') {
       (async () => {
         try {
@@ -190,6 +231,18 @@ const App = () => {
     }
     // vault mode: VaultUnlock component handles the rest — nothing to do here
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Warn before closing tab if file-mode vault has unsaved changes ────────────
+  useEffect(() => {
+    const handler = (e) => {
+      if (vaultCtxRef.current?.mode === 'file' && saveStatus === 'unsaved') {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [saveStatus])
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
   const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 3500) }
@@ -244,6 +297,23 @@ const App = () => {
   // ── Save status indicator ─────────────────────────────────────────────────────
   const SaveIndicator = () => {
     if (storageMode !== 'vault') return null
+    const isFileMode = vaultCtxRef.current?.mode === 'file'
+
+    // File mode unsaved: show clickable download button
+    if (isFileMode && saveStatus === 'unsaved') {
+      return (
+        <button
+          onClick={downloadVault}
+          title="Download encrypted vault file to save your changes"
+          className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md border
+                     text-amber-700 bg-amber-50 border-amber-200 hover:bg-amber-100 transition-colors"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          Save file ↓
+        </button>
+      )
+    }
+
     return (
       <div className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md border transition-colors ${
         saveStatus === 'saving' ? 'text-amber-700 bg-amber-50 border-amber-200' :
