@@ -1,121 +1,187 @@
 // ============================================================================
-// M365 PROVIDER — Microsoft Dataverse via Web API
+// MICROSOFT 365 / DATAVERSE DATABASE LAYER
+// Uses @azure/msal-browser for authentication and the Dataverse Web API.
+// Relies on dynamic configuration from config.js (setup via AuthGate).
 // ============================================================================
 import { PublicClientApplication } from '@azure/msal-browser'
-import { M365_CONFIG } from '../config.js'
+import { getM365Config, DATAVERSE_SCHEMA } from '../config.js'
 
-let _msalApp = null
-let _dvToken = null
-let _dvTokenExpiry = 0
+let msalInstance = null
 
-export function getMsalApp() {
-  if (_msalApp) return _msalApp
-  _msalApp = new PublicClientApplication({
+export const getMsalApp = () => {
+  if (msalInstance) return msalInstance
+
+  const config = getM365Config()
+  if (!config) throw new Error("M365 configuration is missing. Please configure via AuthGate.")
+
+  msalInstance = new PublicClientApplication({
     auth: {
-      clientId:    M365_CONFIG.clientId,
-      authority:   `https://login.microsoftonline.com/${M365_CONFIG.tenantId}`,
-      redirectUri: window.location.href.split('?')[0],
+      clientId: config.clientId,
+      authority: `https://login.microsoftonline.com/${config.tenantId}`,
+      redirectUri: window.location.origin,
     },
-    cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
+    cache: {
+      cacheLocation: 'localStorage', // Better persistence for returning users
+      storeAuthStateInCookie: false,
+    }
   })
-  return _msalApp
+  return msalInstance
 }
 
-async function getDataverseToken() {
-  if (_dvToken && Date.now() < _dvTokenExpiry - 60000) return _dvToken
+const getAccessToken = async () => {
   const app = getMsalApp()
-  const scope = `${M365_CONFIG.dataverseUrl}/.default`
+  const config = getM365Config()
   const accounts = app.getAllAccounts()
-  let result
+  
+  if (accounts.length === 0) {
+    throw new Error("No active MSAL account. Please sign in.")
+  }
+  
+  const request = {
+    scopes: [`${config.url}/.default`],
+    account: accounts[0]
+  }
+
   try {
-    result = await app.acquireTokenSilent({ scopes: [scope], account: accounts[0] })
-  } catch (_) {
-    result = await app.acquireTokenPopup({ scopes: [scope] })
+    const response = await app.acquireTokenSilent(request)
+    return response.accessToken
+  } catch (error) {
+    console.warn("Silent token acquisition failed, requiring interaction.", error)
+    // Fallback to popup if silent acquisition fails (e.g., expired refresh token)
+    const response = await app.acquireTokenPopup(request)
+    return response.accessToken
   }
-  _dvToken = result.accessToken
-  _dvTokenExpiry = result.expiresOn?.getTime() || Date.now() + 3600000
-  return _dvToken
 }
 
-function toDataverseRecord(storeName, localRecord) {
-  const map = M365_CONFIG.columnMaps[storeName] || {}
-  const jsonFields = M365_CONFIG.jsonFields[storeName] || []
-  const out = {}
-  for (const [localKey, dvCol] of Object.entries(map)) {
-    if (localKey === 'id') continue
-    let val = localRecord[localKey]
-    if (val === undefined) continue
-    if (jsonFields.includes(localKey)) val = JSON.stringify(val)
-    out[dvCol] = val
+// Helper to make authenticated requests to the Dataverse Web API
+const fetchFromDataverse = async (endpoint, options = {}) => {
+  const token = await getAccessToken()
+  const config = getM365Config()
+  const baseUrl = `${config.url}/api/data/v9.2`
+  
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'OData-MaxVersion': '4.0',
+    'OData-Version': '4.0',
+    'Accept': 'application/json',
+    'Content-Type': 'application/json; charset=utf-8',
+    'Prefer': 'return=representation', // Forces Dataverse to return the created/updated record
+    ...options.headers
   }
-  return out
-}
 
-function fromDataverseRecord(storeName, dvRow) {
-  const map = M365_CONFIG.columnMaps[storeName] || {}
-  const jsonFields = M365_CONFIG.jsonFields[storeName] || []
-  const out = {}
-  for (const [localKey, dvCol] of Object.entries(map)) {
-    let val = dvRow[dvCol]
-    if (val === undefined || val === null) { out[localKey] = val; continue }
-    if (jsonFields.includes(localKey)) { try { val = JSON.parse(val) } catch (_) {} }
-    out[localKey] = val
+  const response = await fetch(`${baseUrl}/${endpoint}`, { ...options, headers })
+  
+  if (!response.ok) {
+    let errorDetail = response.statusText
+    try {
+      const errBody = await response.json()
+      if (errBody.error && errBody.error.message) {
+        errorDetail = errBody.error.message
+      }
+    } catch (e) { /* non-json error */ }
+    throw new Error(`Dataverse API Error (${response.status}): ${errorDetail}`)
   }
-  const pkCol = map['id']
-  if (pkCol && dvRow[pkCol]) out['id'] = dvRow[pkCol]
-  return out
+  
+  if (response.status === 204) return null
+  return response.json()
 }
 
-function dvTableUrl(storeName) {
-  return `${M365_CONFIG.dataverseUrl}/api/data/v9.2/${M365_CONFIG.tables[storeName]}`
-}
+// Map Application Model -> Dataverse Model
+const mapToDataverse = (collectionName, item) => {
+  const map = DATAVERSE_SCHEMA.columnMaps[collectionName]
+  const jsonFields = DATAVERSE_SCHEMA.jsonFields[collectionName] || []
+  const dataverseRecord = {}
 
-async function dvFetch(url, options = {}) {
-  const token = await getDataverseToken()
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'OData-MaxVersion': '4.0', 'OData-Version': '4.0',
-      'Accept': 'application/json',
-      'Content-Type': 'application/json; charset=utf-8',
-      'Prefer': 'odata.include-annotations=*',
-      ...(options.headers || {}),
-    },
+  Object.keys(item).forEach(key => {
+    // Skip internal flags
+    if (key === 'isNew') return 
+    
+    const targetCol = map[key]
+    if (targetCol) {
+      if (jsonFields.includes(key) && item[key] !== null) {
+        dataverseRecord[targetCol] = JSON.stringify(item[key])
+      } else {
+        dataverseRecord[targetCol] = item[key]
+      }
+    }
   })
-  if (!res.ok) { const body = await res.text().catch(() => ''); throw new Error(`Dataverse ${res.status}: ${body}`) }
-  if (res.status === 204) return null
-  return res.json()
+  return dataverseRecord
 }
+
+// Map Dataverse Model -> Application Model
+const mapToApp = (collectionName, record) => {
+  const map = DATAVERSE_SCHEMA.columnMaps[collectionName]
+  const jsonFields = DATAVERSE_SCHEMA.jsonFields[collectionName] || []
+  const appItem = {}
+
+  Object.entries(map).forEach(([appKey, dvCol]) => {
+    let val = record[dvCol]
+    if (jsonFields.includes(appKey) && typeof val === 'string') {
+      try {
+        val = JSON.parse(val)
+      } catch (e) {
+        val = Array.isArray(val) ? [] : {}
+      }
+    }
+    appItem[appKey] = val
+  })
+  return appItem
+}
+
+// ── CRUD Operations ─────────────────────────────────────────────────────────────
 
 export const DataverseDB = {
-  generateId: () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
-  }),
-
-  getAll: async (storeName) => {
-    const map  = M365_CONFIG.columnMaps[storeName] || {}
-    const cols = Object.values(map).join(',')
-    const data = await dvFetch(`${dvTableUrl(storeName)}?$select=${cols}`)
-    return (data?.value || []).map(row => fromDataverseRecord(storeName, row))
+  // Generate a random GUID for new records if not utilizing Dataverse auto-gen
+  generateId: () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    })
   },
 
-  put: async (storeName, localRecord) => {
-    const map   = M365_CONFIG.columnMaps[storeName] || {}
-    const pkCol = map['id']
-    const pkVal = localRecord['id']
-    const body  = toDataverseRecord(storeName, localRecord)
-    if (pkVal) {
-      await dvFetch(`${dvTableUrl(storeName)}(${pkVal})`, { method: 'PATCH', headers: { 'If-Match': '*' }, body: JSON.stringify(body) })
-    } else {
-      const res = await dvFetch(dvTableUrl(storeName), { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(body) })
-      if (res && pkCol && res[pkCol]) localRecord['id'] = res[pkCol]
-    }
-    return localRecord
+  getAll: async (collection) => {
+    const table = DATAVERSE_SCHEMA.tables[collection]
+    if (!table) throw new Error(`Unknown collection: ${collection}`)
+    
+    const result = await fetchFromDataverse(`${table}`)
+    if (!result || !result.value) return []
+    return result.value.map(record => mapToApp(collection, record))
   },
 
-  delete: async (storeName, id) => {
-    await dvFetch(`${dvTableUrl(storeName)}(${id})`, { method: 'DELETE' })
+  getById: async (collection, id) => {
+    const table = DATAVERSE_SCHEMA.tables[collection]
+    const map = DATAVERSE_SCHEMA.columnMaps[collection]
+    const result = await fetchFromDataverse(`${table}(${id})`)
+    return mapToApp(collection, result)
   },
+
+  create: async (collection, data) => {
+    const table = DATAVERSE_SCHEMA.tables[collection]
+    const dvRecord = mapToDataverse(collection, data)
+    
+    const result = await fetchFromDataverse(`${table}`, {
+      method: 'POST',
+      body: JSON.stringify(dvRecord)
+    })
+    return mapToApp(collection, result)
+  },
+
+  update: async (collection, id, data) => {
+    const table = DATAVERSE_SCHEMA.tables[collection]
+    const dvRecord = mapToDataverse(collection, data)
+    
+    await fetchFromDataverse(`${table}(${id})`, {
+      method: 'PATCH',
+      body: JSON.stringify(dvRecord)
+    })
+    // Prefer=return=representation is set, but to ensure sync we merge client side
+    return { ...data, id } 
+  },
+
+  delete: async (collection, id) => {
+    const table = DATAVERSE_SCHEMA.tables[collection]
+    await fetchFromDataverse(`${table}(${id})`, {
+      method: 'DELETE'
+    })
+  }
 }

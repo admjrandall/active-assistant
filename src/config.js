@@ -1,12 +1,24 @@
 // ============================================================================
-// M365 / DATAVERSE CONFIGURATION
-// Fill these in with your tenant and Dataverse environment details.
-// App Registration needs: Dynamics CRM → user_impersonation delegated permission.
+// CONFIGURATION & SCHEMA
+// M365 config is now dynamic and stored in localStorage upon first setup.
 // ============================================================================
-export const M365_CONFIG = {
-  clientId: 'YOUR_APP_REGISTRATION_CLIENT_ID',
-  tenantId: 'YOUR_TENANT_ID',
-  dataverseUrl: 'https://YOUR_ORG.crm.dynamics.com',
+
+export const STORAGE_MODE_KEY = 'aa-storage-mode'
+export const M365_SETUP_KEY   = 'aa-m365-setup'
+
+// Retrieve user-provided M365 settings
+export const getM365Config = () => {
+  const stored = localStorage.getItem(M365_SETUP_KEY)
+  if (!stored) return null
+  try {
+    return JSON.parse(stored)
+  } catch {
+    return null
+  }
+}
+
+// Fixed schema definitions for Dataverse mapping
+export const DATAVERSE_SCHEMA = {
   tables: {
     projects:       'aa_projects',
     tasks:          'aa_tasks',
@@ -51,10 +63,6 @@ export const M365_CONFIG = {
   },
 }
 
-// ============================================================================
-// SHARED CONSTANTS
-// ============================================================================
-export const STORAGE_MODE_KEY = 'active-assistant-storage-mode'
 export const MAX_TITLE_LENGTH = 500
 export const MAX_TEXT_LENGTH = 10000
 export const CLOSE_ANIMATION_MS = 400
