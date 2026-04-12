@@ -355,12 +355,12 @@ return (
     <div className={`absolute inset-0 flex flex-col overflow-hidden transition-colors duration-500 ${isEditMode ? 'canvas-grid bg-slate-100' : 'bg-slate-50'}`}>
       
       {/* Unified Header */}
-      <div className="flex-none h-16 w-full flex items-center justify-between border-b border-slate-200/50 bg-white/70 px-6 shadow-sm backdrop-blur-md z-50">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900">
-            {isEditMode ? 'Editing Dashboard Layout' : 'Dashboard Workspace'}
+           <div className="flex-none h-14 sm:h-16 w-full flex items-center justify-between border-b border-slate-200/50 bg-white/70 px-4 sm:px-6 shadow-sm backdrop-blur-md z-50">
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-xl font-semibold tracking-tight text-slate-900 truncate">
+            {isEditMode ? 'Editing Dashboard Layout' : 'Dashboard'}
           </h2>
-          <p className="text-xs text-slate-500">
+ <p className="text-xs text-slate-500 hidden sm:block">
             {isEditMode ? 'Drag to rearrange and resize cards.' : 'A command center for workload, activity, and client pulse.'}
           </p>
         </div>
@@ -369,22 +369,51 @@ return (
         <div className="flex items-center gap-3 pr-8">
           {isEditMode ? (
             <>
-              <button onClick={handleResetLayout} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors">Reset Layout</button>
-              <button onClick={() => setIsEditMode(false)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors">Cancel</button>
+              <button onClick={handleResetLayout} className="rounded-lg border border-slate-200 bg-white px-3 sm:px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors hidden sm:block">Reset Layout</button>
+              <button onClick={() => setIsEditMode(false)} className="rounded-lg border border-slate-200 bg-white px-3 sm:px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors">Cancel</button>
               <button onClick={() => { handleSave(); setIsEditMode(false); }} disabled={isSaving} className="rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-bold text-white shadow-lg hover:bg-indigo-700 transition-colors disabled:opacity-50">
                 <Icons.Save />
                 </button>
             </>
           ) : (
-            <button onClick={() => setIsEditMode(true)} className="rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-bold text-white shadow-xl hover:bg-indigo-700 flex items-center gap-2 transition-all hover:scale-105">
-              <Icons.Edit />
+           <button onClick={() => setIsEditMode(true)} className="hidden lg:flex rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-bold text-white shadow-xl hover:bg-indigo-700 items-center gap-2 transition-all hover:scale-105">
             </button>
           )}
         </div>
       </div>
 
-      {/* Unified Canvas Area */}
-      <div className="flex-1 relative w-full overflow-auto custom-scrollbar canvas-scroll-area">
+  {/* ── MOBILE: Stacked scrollable layout (below lg) ── */}
+      <div className="lg:hidden flex-1 overflow-y-auto custom-scrollbar">
+        <div className="p-4 space-y-4 pb-20 sm:pb-4">
+          <div className="acrylic rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 pb-2 mb-3 border-b border-slate-200">Portfolio Snapshot</h3>
+            <OverviewUI />
+          </div>
+          <div className="acrylic rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 pb-2 mb-3 border-b border-slate-200">Quick Actions</h3>
+            <QuickActionsUI />
+          </div>
+          <div className="acrylic rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 pb-2 mb-3 border-b border-slate-200">Attention Queue</h3>
+            <AttentionUI />
+          </div>
+          <div className="acrylic rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 pb-2 mb-3 border-b border-slate-200">Recent Activity</h3>
+            <ActivityUI />
+          </div>
+          <div className="acrylic rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 pb-2 mb-3 border-b border-slate-200">Team Load</h3>
+            <TeamPulseUI />
+          </div>
+          <div className="acrylic rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 pb-2 mb-3 border-b border-slate-200">Client Pulse</h3>
+            <ClientPulseUI />
+          </div>
+        </div>
+      </div>
+ 
+      {/* ── DESKTOP: Canvas layout (lg+) ── */}
+      <div className="hidden lg:block flex-1 relative w-full overflow-auto custom-scrollbar canvas-scroll-area">
         <div className="relative" style={{ width: '4000px', height: '4000px' }}>
           <DynamicCard isEditable={isEditMode} key={`overview-${layoutVersion}`} id="overview" title="Portfolio Snapshot" defaultLayout={workspaceLayouts.overview} onUpdate={handleLayoutUpdate} zIndex={cardZIndexes.overview} onInteract={bringToFront}><OverviewUI /></DynamicCard>
           <DynamicCard isEditable={isEditMode} key={`attention-${layoutVersion}`} id="attention" title="Attention Queue" defaultLayout={workspaceLayouts.attention} onUpdate={handleLayoutUpdate} zIndex={cardZIndexes.attention} onInteract={bringToFront}><AttentionUI /></DynamicCard>

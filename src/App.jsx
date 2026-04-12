@@ -154,21 +154,23 @@ const App = () => {
     </div>
   )
 
+  const NAV_ITEMS = [
+    { key: 'dashboard', icon: <Icons.Layout />, label: 'Dash' },
+    { key: 'clients',   icon: <Icons.Briefcase />, label: 'Dept' },
+    { key: 'projects',  icon: <Icons.Folder />, label: 'Proj' },
+    { key: 'people',    icon: <Icons.Users />, label: 'Team' },
+  ]
+
   return (
     <StorageModeContext.Provider value={{ storageMode, switchMode, m365AuthStatus, m365UserName }}>
       <CRMContext.Provider value={{ projects, clients, people, tasks, departments, communications, DB: activeDB, loadAllData }}>
         <div className="flex h-full w-full relative">
 
-          {/* ── Sidebar Nav ── */}
-          <nav className="w-20 acrylic border-r border-slate-200/50 flex flex-col items-center py-6 gap-8 z-20 shadow-lg">
+          {/* ── Sidebar Nav (hidden on mobile) ── */}
+          <nav className="hidden sm:flex w-20 acrylic border-r border-slate-200/50 flex-col items-center py-6 gap-8 z-20 shadow-lg">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-200">AA</div>
             <div className="flex flex-col gap-4 w-full px-3">
-              {[
-                { key: 'dashboard', icon: <Icons.Layout />, label: 'Dash' },
-                { key: 'clients',   icon: <Icons.Briefcase />, label: 'Dept' },
-                { key: 'projects',  icon: <Icons.Folder />, label: 'Proj' },
-                { key: 'people',    icon: <Icons.Users />, label: 'Team' },
-              ].map(({ key, icon, label }, i) => (
+              {NAV_ITEMS.map(({ key, icon, label }, i) => (
                 <React.Fragment key={key}>
                   {i === 1 && <div className="h-px w-8 bg-slate-200 mx-auto"></div>}
                   <button onClick={() => setNavSection(key)} className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${navSection === key ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:bg-white/50 hover:text-slate-800'}`}>
@@ -181,35 +183,35 @@ const App = () => {
           </nav>
 
           {/* ── Main Content ── */}
-          <main className="flex-1 flex flex-col relative h-full">
-            <header className="h-16 acrylic border-b border-slate-200/50 flex items-center justify-between px-8 z-10 sticky top-0">
-              <div className="flex items-center gap-4">
-                <h1 className="font-semibold text-slate-800 tracking-tight text-lg">Active Assistant</h1>
-                <div className="h-4 w-px bg-slate-300"></div>
-                <button onClick={() => setIsModeModalOpen(true)} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md border transition-colors ${storageMode === 'm365' ? 'text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100' : 'text-slate-500 bg-slate-100 border-slate-200 hover:bg-slate-200'}`}>
+          <main className="flex-1 flex flex-col relative h-full min-w-0">
+            <header className="h-14 sm:h-16 acrylic border-b border-slate-200/50 flex items-center justify-between px-3 sm:px-8 z-10 sticky top-0">
+              <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                <h1 className="font-semibold text-slate-800 tracking-tight text-base sm:text-lg whitespace-nowrap">Active Assistant</h1>
+                <div className="hidden sm:block h-4 w-px bg-slate-300"></div>
+                <button onClick={() => setIsModeModalOpen(true)} className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md border transition-colors ${storageMode === 'm365' ? 'text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100' : 'text-slate-500 bg-slate-100 border-slate-200 hover:bg-slate-200'}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${storageMode === 'm365' ? 'bg-blue-500' : 'bg-slate-400'}`}></span>
                   {storageMode === 'm365' ? `M365${m365UserName ? ` · ${m365UserName.split(' ')[0]}` : ''}` : 'Offline'}
                 </button>
-                <button onClick={() => setIsDataModalOpen(true)} className="ml-2 flex items-center gap-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2 py-1.5 rounded-md border border-indigo-100 transition-colors">
+                <button onClick={() => setIsDataModalOpen(true)} className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2 py-1.5 rounded-md border border-indigo-100 transition-colors">
                   <Icons.Database size={14} /> Data
                 </button>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 {navSection !== 'dashboard' && (
-                  <div className="flex bg-slate-200/60 p-1 rounded-lg border border-slate-200/50">
+                  <div className="flex bg-slate-200/60 p-0.5 sm:p-1 rounded-lg border border-slate-200/50">
                     <button onClick={() => setViewMode('canvas')} className={`p-1.5 rounded-md transition-all ${viewMode === 'canvas' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`} title="Spatial Canvas"><Icons.Grid /></button>
                     {navSection === 'projects' && <button onClick={() => setViewMode('kanban')} className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`} title="Kanban"><Icons.Kanban /></button>}
                     <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`} title="Cards Grid"><Icons.Cards /></button>
                     <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`} title="List View"><Icons.List /></button>
                   </div>
                 )}
-                {navSection === 'projects' && <button onClick={handleCreateProject} className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-md transition-colors"><Icons.Plus /> New Project</button>}
-                {navSection === 'clients'  && <button onClick={handleCreateClient}  className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-md transition-colors"><Icons.Plus /> Add Client</button>}
-                {navSection === 'people'   && <button onClick={handleCreatePerson}  className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-md transition-colors"><Icons.Plus /> Add Member</button>}
+                {navSection === 'projects' && <button onClick={handleCreateProject} className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-2 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-md transition-colors"><Icons.Plus /><span className="hidden sm:inline">New Project</span></button>}
+                {navSection === 'clients'  && <button onClick={handleCreateClient}  className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-2 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-md transition-colors"><Icons.Plus /><span className="hidden sm:inline">Add Client</span></button>}
+                {navSection === 'people'   && <button onClick={handleCreatePerson}  className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-2 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-md transition-colors"><Icons.Plus /><span className="hidden sm:inline">Add Member</span></button>}
               </div>
             </header>
 
-            <div className={`flex-1 relative overflow-y-auto transition-all duration-500 ${(activeProject || activePerson || activeClient || confirmDialog.isOpen) ? 'blur-sm scale-[0.99] opacity-70 pointer-events-none' : ''}`}>
+            <div className={`flex-1 relative overflow-y-auto transition-all duration-500 pb-16 sm:pb-0 ${(activeProject || activePerson || activeClient || confirmDialog.isOpen) ? 'blur-sm scale-[0.99] opacity-70 pointer-events-none' : ''}`}>
               {navSection === 'dashboard' && <DashboardWorkspace showToast={showToast} requestConfirm={requestConfirm} onOpenProject={setActiveProject} onOpenClient={setActiveClient} onOpenPerson={setActivePerson} onCreateProject={handleCreateProject} onCreateClient={handleCreateClient} onCreatePerson={handleCreatePerson} />}
 
               {navSection === 'projects' && viewMode === 'canvas'  && <SpatialCanvas type="projects" onOpenItem={setActiveProject} />}
@@ -229,6 +231,16 @@ const App = () => {
             {activeClient  && <ClientWorkspace  client={activeClient}   onClose={() => setActiveClient(null)}  showToast={showToast} requestConfirm={requestConfirm} />}
             <DataManagementModal isOpen={isDataModalOpen} onClose={() => setIsDataModalOpen(false)} showToast={showToast} />
           </main>
+
+          {/* ── Mobile Bottom Nav ── */}
+          <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-20 acrylic border-t border-slate-200/50 flex items-center justify-around px-2 py-1 safe-area-bottom">
+            {NAV_ITEMS.map(({ key, icon, label }) => (
+              <button key={key} onClick={() => setNavSection(key)} className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-all ${navSection === key ? 'text-indigo-600' : 'text-slate-500'}`}>
+                {icon}
+                <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
+              </button>
+            ))}
+          </nav>
 
           <ConfirmDialog isOpen={confirmDialog.isOpen} title={confirmDialog.title} message={confirmDialog.message} onConfirm={confirmDialog.onConfirm} onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })} />
 

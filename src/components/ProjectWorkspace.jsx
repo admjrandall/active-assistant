@@ -415,7 +415,7 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
             </div>
 
 {/* Unified Body - Redesigned as a Widget Dashboard */}
-            <div className="py-2 p-8 flex-1 overflow-y-auto flex flex-col gap-4 custom-scrollbar bg-slate-50/50">
+            <div className="p-4 sm:p-8 flex-1 overflow-y-auto flex flex-col gap-4 custom-scrollbar bg-slate-50/50">
               
               {/* 1. NARRATIVE CARD */}
               <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm">

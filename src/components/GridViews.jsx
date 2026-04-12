@@ -3,8 +3,8 @@ import { useCRM } from '../context.jsx'
 const ClientsGridView = ({ onOpenClient }) => {
   const { clients, projects, communications } = useCRM();
   return (
-    <div className="h-full w-full p-8 canvas-grid overflow-y-auto">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto pt-4">
+    <div className="h-full w-full p-4 sm:p-8 canvas-grid overflow-y-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto pt-2 sm:pt-4">
         {clients.map(client => (
           <button key={client.id} onClick={() => onOpenClient(client)} className="acrylic p-6 rounded-2xl text-left hover:scale-105 transition-transform group flex flex-col h-full">
             <div className="w-12 h-12 bg-slate-800 text-white rounded-xl flex items-center justify-center font-bold text-lg mb-4 shadow-md">{client.name?.charAt(0) || '?'}</div>
@@ -24,8 +24,8 @@ const ClientsGridView = ({ onOpenClient }) => {
 const PeopleGridView = ({ onOpenPerson }) => {
   const { people } = useCRM();
   return (
-    <div className="h-full w-full p-8 canvas-grid overflow-y-auto">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto pt-4">
+    <div className="h-full w-full p-4 sm:p-8 canvas-grid overflow-y-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto pt-2 sm:pt-4">
         {people.map(person => (
           <button key={person.id} onClick={() => onOpenPerson(person)} className="acrylic p-6 rounded-2xl text-left hover:scale-105 transition-transform group">
             <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-lg mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">{person.name?.charAt(0) || '?'}</div>
@@ -47,8 +47,8 @@ const ProjectsGridView = ({ onOpenProject }) => {
   const getDot = (p) => p === 'Low' ? 'bg-emerald-400' : p === 'High' ? 'bg-rose-400' : 'bg-amber-400';
 
   return (
-<div className="h-full w-full p-8 canvas-grid overflow-y-auto">
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto pt-4">
+<div className="h-full w-full p-4 sm:p-8 canvas-grid overflow-y-auto">
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto pt-2 sm:pt-4">
     {projects.map(project => {
       const client = clients.find(c => c.id === project.clientId);
       const dept = departments.find(d => d.id === project.deptId);
