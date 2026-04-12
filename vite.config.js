@@ -7,6 +7,12 @@ export default defineConfig({
     react(),
     viteSingleFile(),   // Inlines all JS + CSS into one self-contained index.html
   ],
+  
+  server: {
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    }, // <-- Added closing brace for headers
+  },   // <-- Added closing brace for server
 
   // Relative paths so the built file works from file://, USB, or any location
   base: './',
