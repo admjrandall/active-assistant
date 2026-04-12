@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --fluent-bg: #f3f4f6;
+  --fluent-border: rgba(255, 255, 255, 0.5);
+}
+
+body {
+  background-color: var(--fluent-bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+  margin: 0;
+}
+
+.acrylic {
+  background-color: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  border: 1px solid var(--fluent-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.acrylic-dark {
+  background-color: rgba(30, 41, 59, 0.85);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.canvas-grid {
+  background-image:
+    radial-gradient(circle at 2px 2px, #cbd5e1 1px, transparent 0),
+    linear-gradient(to right, rgba(203, 213, 225, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(203, 213, 225, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px, 200px 200px, 200px 200px;
+}
+
+.fluent-input {
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(203, 213, 225, 0.5);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+  transition: all 0.2s;
+}
+.fluent-input:focus {
+  background: white;
+  border-color: #6366f1;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.drag-over {
+  background-color: rgba(99, 102, 241, 0.05) !important;
+  border: 2px dashed #6366f1 !important;
+}
+
+.sortable-ghost {
+  opacity: 0.4;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.5); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.8); }
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.toast-enter { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-enter { animation: fadeIn 0.2s ease-out forwards; }
