@@ -1,0 +1,60 @@
+name: Build & Release
+
+# Triggers on every push to main — produces a dated GitHub Release
+# with a single self-contained index.html as the downloadable asset.
+on:
+  push:
+    branches: ['main']
+  workflow_dispatch:   # allow manual trigger from GitHub Actions UI
+
+permissions:
+  contents: write      # needed to create releases and upload assets
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the source code
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Set up Node.js (LTS) with npm cache
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      # 3. Install dependencies (ci = clean install, respects package-lock.json)
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Build — vite-plugin-singlefile produces one self-contained index.html
+      - name: Build
+        run: npm run build
+
+      # 5. Generate a timestamp tag  e.g. v2026.04.12-1430
+      - name: Generate release tag
+        id: tag
+        run: echo "tag=v$(date -u +'%Y.%m.%d-%H%M')" >> "$GITHUB_OUTPUT"
+
+      # 6. Create a GitHub Release and attach dist/index.html
+      #    softprops/action-gh-release handles tag creation + asset upload in one step
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Active Assistant ${{ steps.tag.outputs.tag }}"
+          body: |
+            ### What's in this release
+            Single self-contained `index.html` — no server, no Node, no install required.
+
+            **To use at work:**
+            1. Download `index.html` below
+            2. Open it in Chrome or Edge (double-click or drag into browser)
+            3. Enter your GitHub PAT and vault password to unlock
+
+            **Built from commit:** `${{ github.sha }}`
+          files: dist/index.html
+          fail_on_unmatched_files: true
