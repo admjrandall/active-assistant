@@ -13,13 +13,21 @@ const MAX_TASKS = 1000;
 const DEBOUNCE_DELAY = 500;
 
 const PROJECT_MESSAGES = {
-  PROJECT_CREATED: "New project created.", PROJECT_SAVED: "Project details saved.", PROJECT_REMOVED: "Project removed.",
-  TASK_FAILED: "Failed to add task.", DELETE_TASK_FAILED: "Failed to delete task.", UPDATE_TASK_FAILED: "Failed to update task.",
-  SAVE_TASK_FAILED: "Failed to save task change.", SAVE_PROJECT_FAILED: "Failed to save project. Please try again.",
-  DELETE_PROJECT_FAILED: "Failed to delete project.", LAYOUT_SAVE_FAILED: "Failed to save layout changes.",
-  MAX_NOTES_REACHED: `Maximum of ${MAX_NOTES} notes reached.`, MAX_TASKS_REACHED: `Maximum of ${MAX_TASKS} tasks reached.`,
+  PROJECT_CREATED: "New project created.", 
+  PROJECT_SAVED: "Project details saved.", 
+  PROJECT_REMOVED: "Project removed.",
+  TASK_FAILED: "Failed to add task.", 
+  DELETE_TASK_FAILED: "Failed to delete task.", 
+  UPDATE_TASK_FAILED: "Failed to update task.",
+  SAVE_TASK_FAILED: "Failed to save task change.", 
+  SAVE_PROJECT_FAILED: "Failed to save project. Please try again.",
+  DELETE_PROJECT_FAILED: "Failed to delete project.", 
+  LAYOUT_SAVE_FAILED: "Failed to save layout changes.",
+  MAX_NOTES_REACHED: `Maximum of ${MAX_NOTES} notes reached.`, 
+  MAX_TASKS_REACHED: `Maximum of ${MAX_TASKS} tasks reached.`,
   CONFIRM_DELETE_PROJECT: "Are you sure you want to permanently delete this project?",
-  CONFIRM_CLOSE_UNSAVED: "You have unsaved changes. Are you sure you want to close?", INVALID_DATE_RANGE: "Start date must be before due date.",
+  CONFIRM_CLOSE_UNSAVED: "You have unsaved changes. Are you sure you want to close?", 
+  INVALID_DATE_RANGE: "Start date must be before due date.",
 };
 
 const validateDateRange = (startDate, dueDate) => {
@@ -35,7 +43,7 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
   const [localTasks, setLocalTasks] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  // --- RESTORED CANVAS INLINE STATES ---
+  // --- CANVAS INLINE STATES ---
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [newNote, setNewNote] = useState('');
@@ -58,8 +66,10 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
 
   const [cardZIndexes, setCardZIndexes] = useState({ narrative: 10, tasks: 11, notes: 12, details: 13 });
   const [workspaceLayouts, setWorkspaceLayouts] = useState(project.workspaceLayout || {
-    narrative: { x: 50, y: 100, w: 400, h: 300 }, tasks: { x: 480, y: 100, w: 450, h: 500 },
-    notes: { x: 50, y: 420, w: 400, h: 300 }, details: { x: 950, y: 100, w: 300, h: 350 }
+    narrative: { x: 50, y: 100, w: 400, h: 300 }, 
+    tasks: { x: 480, y: 100, w: 450, h: 500 },
+    notes: { x: 50, y: 420, w: 400, h: 300 }, 
+    details: { x: 950, y: 100, w: 300, h: 350 }
   });
 
   const peopleMap = useMemo(() => people.reduce((acc, p) => { acc[p.id] = p; return acc; }, {}), [people]);
@@ -68,7 +78,10 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
     DB.put('tasks', task).catch(() => showToast(PROJECT_MESSAGES.SAVE_TASK_FAILED)); 
   }, DEBOUNCE_DELAY), [DB, showToast]);
 
-  useEffect(() => { setIsOpen(true); setLocalTasks(tasks.filter(t => t.projectId === project.id)); }, [tasks, project.id]);
+  useEffect(() => { 
+    setIsOpen(true); 
+    setLocalTasks(tasks.filter(t => t.projectId === project.id)); 
+  }, [tasks, project.id]);
   
   const processedTasks = useMemo(() => {
     let result = [...localTasks];
@@ -110,7 +123,8 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); handleSave(); }
     };
-    document.addEventListener('keydown', handleKeyDown); return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown); 
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isSaving, isTaskModalOpen, isNoteModalOpen, isTasksExpanded, isNotesExpanded]);
 
   const handleChange = useCallback((e) => {
@@ -124,7 +138,10 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
       setFormData(prev => {
         const startDate = name === 'startDate' ? sanitizedValue : prev.startDate;
         const dueDate = name === 'dueDate' ? sanitizedValue : prev.dueDate;
-        if (!validateDateRange(startDate, dueDate)) { showToast(PROJECT_MESSAGES.INVALID_DATE_RANGE); return prev; }
+        if (!validateDateRange(startDate, dueDate)) { 
+          showToast(PROJECT_MESSAGES.INVALID_DATE_RANGE); 
+          return prev; 
+        }
         return {...prev, [name]: sanitizedValue};
       });
     } else {
@@ -147,7 +164,12 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
     const updatedLayouts = { ...workspaceLayouts, [cardId]: newLayout };
     setWorkspaceLayouts(updatedLayouts);
     const updatedProject = { ...formData, workspaceLayout: updatedLayouts };
-    try { await DB.put('projects', updatedProject); setFormData(updatedProject); } catch (error) { showToast(PROJECT_MESSAGES.LAYOUT_SAVE_FAILED); }
+    try { 
+      await DB.put('projects', updatedProject); 
+      setFormData(updatedProject); 
+    } catch (error) { 
+      showToast(PROJECT_MESSAGES.LAYOUT_SAVE_FAILED); 
+    }
   };
 
   const triggerClose = () => { setIsOpen(false); setTimeout(onClose, 400); };
@@ -158,12 +180,14 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
     try {
       setIsSaving(true);
       const isEmpty = !(formData.name || '').trim() && !(formData.narrative || '').trim() && localTasks.length === 0 && (!formData.notes || formData.notes.length === 0);
-      if (formData.isNew && isEmpty && !(newNote || '').trim() && !(newTaskTitle || '').trim()) { triggerClose(); return; }
+      if (formData.isNew && isEmpty && !(newNote || '').trim() && !(newTaskTitle || '').trim()) { 
+        triggerClose(); 
+        return; 
+      }
 
       let finalName = sanitizeInput((formData.name || '').trim(), MAX_TITLE_LENGTH) || 'Unnamed Project';
       const updated = {...formData, name: finalName, lastTouch: new Date().toISOString()}; delete updated.isNew;
 
-      // Process canvas inline drafts if they exist
       if ((newNote || '').trim()) {
         const currentNotes = updated.notes || [];
         if (currentNotes.length < MAX_NOTES) {
@@ -175,10 +199,15 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
         await DB.put('tasks', { id: DB.generateId(), projectId: project.id, title: sanitizeInput(newTaskTitle.trim(), MAX_TITLE_LENGTH), done: false, subtasks: [], description: '', effort: 0, dueDate: '', assigneeId: '' });
       }
 
-      await DB.put('projects', updated); await loadAllData();
+      await DB.put('projects', updated); 
+      await loadAllData();
       showToast(formData.isNew ? PROJECT_MESSAGES.PROJECT_CREATED : PROJECT_MESSAGES.PROJECT_SAVED);
       triggerClose();
-    } catch (error) { showToast(PROJECT_MESSAGES.SAVE_PROJECT_FAILED); } finally { setIsSaving(false); }
+    } catch (error) { 
+      showToast(PROJECT_MESSAGES.SAVE_PROJECT_FAILED); 
+    } finally { 
+      setIsSaving(false); 
+    }
   };
 
   const handleProjectDelete = useCallback(() => {
@@ -186,14 +215,16 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
       try {
         const projectTasks = tasks.filter(t => t.projectId === project.id);
         for (const task of projectTasks) await DB.delete('tasks', task.id);
-        await DB.delete('projects', project.id); await loadAllData();
-        showToast(PROJECT_MESSAGES.PROJECT_REMOVED); triggerClose();
-      } catch (error) { showToast(PROJECT_MESSAGES.DELETE_PROJECT_FAILED); }
+        await DB.delete('projects', project.id); 
+        await loadAllData();
+        showToast(PROJECT_MESSAGES.PROJECT_REMOVED); 
+        triggerClose();
+      } catch (error) { 
+        showToast(PROJECT_MESSAGES.DELETE_PROJECT_FAILED); 
+      }
     });
   }, [tasks, project.id, DB, loadAllData, showToast, requestConfirm, triggerClose]);
 
-
-  // --- RESTORED CANVAS INLINE HANDLERS ---
   const handleTaskChange = useCallback(async (taskId, field, value) => {
     try {
       if (!ALLOWED_TASK_FIELDS.includes(field)) return;
@@ -221,7 +252,9 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
       try {
         const sanitizedTitle = sanitizeInput(newTaskTitle.trim(), MAX_TITLE_LENGTH);
         const t = { id: DB.generateId(), projectId: project.id, title: sanitizedTitle, done: false, subtasks: [], description: '', effort: 0, dueDate: '', assigneeId: '' };
-        await DB.put('tasks', t); setLocalTasks(prev => [...prev, t]); setNewTaskTitle('');
+        await DB.put('tasks', t); 
+        setLocalTasks(prev => [...prev, t]); 
+        setNewTaskTitle('');
       } catch (error) { showToast(PROJECT_MESSAGES.TASK_FAILED); }
     }
   }, [newTaskTitle, localTasks.length, project.id, DB, showToast]);
@@ -242,26 +275,37 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
     setFormData(prev => ({ ...prev, notes: (prev.notes || []).map(n => n.id === noteId ? { ...n, text: sanitizedText } : n) }));
   }, []);
 
-  // Shared Delete Handlers
   const handleToggleTask = async (task) => {
      const updatedTask = { ...task, done: !task.done };
-     try { await DB.put('tasks', updatedTask); setLocalTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t)); } 
-     catch (error) { showToast(PROJECT_MESSAGES.UPDATE_TASK_FAILED); }
+     try { 
+       await DB.put('tasks', updatedTask); 
+       setLocalTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t)); 
+     } catch (error) { 
+       showToast(PROJECT_MESSAGES.UPDATE_TASK_FAILED); 
+     }
   };
 
   const handleTaskDelete = async (id) => {
-    try { await DB.delete('tasks', id); setLocalTasks(prev => prev.filter(t => t.id !== id)); }
-    catch (error) { showToast(PROJECT_MESSAGES.DELETE_TASK_FAILED); }
+    try { 
+      await DB.delete('tasks', id); 
+      setLocalTasks(prev => prev.filter(t => t.id !== id)); 
+    } catch (error) { 
+      showToast(PROJECT_MESSAGES.DELETE_TASK_FAILED); 
+    }
   };
 
   const handleDeleteNote = (noteId) => {
     setFormData(prev => ({ ...prev, notes: (prev.notes || []).filter(n => n.id !== noteId) }));
   };
 
-  // --- DRAWER MODAL HANDLERS ---
   const openTaskModal = (task = null) => {
-    if (task) { setEditingTaskId(task.id); setTaskFormData({ title: task.title || '', description: task.description || '', assigneeId: task.assigneeId || '', dueDate: task.dueDate || '', effort: task.effort || 0 }); } 
-    else { setEditingTaskId(null); setTaskFormData({ title: '', description: '', assigneeId: '', dueDate: '', effort: 0 }); }
+    if (task) { 
+      setEditingTaskId(task.id); 
+      setTaskFormData({ title: task.title || '', description: task.description || '', assigneeId: task.assigneeId || '', dueDate: task.dueDate || '', effort: task.effort || 0 }); 
+    } else { 
+      setEditingTaskId(null); 
+      setTaskFormData({ title: '', description: '', assigneeId: '', dueDate: '', effort: 0 }); 
+    }
     setIsTaskModalOpen(true);
   };
 
@@ -279,8 +323,13 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
   };
 
   const openNoteModal = (note = null) => {
-    if (note) { setEditingNoteId(note.id); setNoteText(note.text || ''); } 
-    else { setEditingNoteId(null); setNoteText(''); }
+    if (note) { 
+      setEditingNoteId(note.id); 
+      setNoteText(note.text || ''); 
+    } else { 
+      setEditingNoteId(null); 
+      setNoteText(''); 
+    }
     setIsNoteModalOpen(true);
   };
 
@@ -298,20 +347,60 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
     setIsNoteModalOpen(false);
   };
 
-  // --- UI COMPONENTS ---
-  const DrawerDetailsUI = () => (
+  // --- UI RENDER FUNCTIONS ---
+  // Using functions instead of Components prevents React from unmounting inputs on every keystroke
+
+  const renderDrawerDetails = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Stage</label><select name="stage" value={formData.stage || 'Lead'} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm"><option value="Lead">Lead Phase</option><option value="Active">Active Build</option><option value="Review">In Review</option><option value="Done">Completed</option></select></div>
-      <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Priority</label><select name="priority" value={formData.priority || 'Medium'} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm"><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option></select></div>
-      <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Client</label><select name="clientId" value={formData.clientId || ''} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm"><option value="">No Client Linked</option>{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-      <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Department</label><select name="deptId" value={formData.deptId || ''} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm"><option value="">No Dept Linked</option>{departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-      <div className="sm:col-span-2"><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Owner</label><select name="ownerId" value={formData.ownerId || ''} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm"><option value="">Unassigned</option>{people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-      <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Start Date</label><input type="date" name="startDate" value={formData.startDate || ''} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm" /></div>
-      <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Due Date</label><input type="date" name="dueDate" value={formData.dueDate || ''} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm text-rose-600 font-medium" /></div>
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Stage</label>
+        <select name="stage" value={formData.stage || 'Lead'} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm">
+          <option value="Lead">Lead Phase</option>
+          <option value="Active">Active Build</option>
+          <option value="Review">In Review</option>
+          <option value="Done">Completed</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Priority</label>
+        <select name="priority" value={formData.priority || 'Medium'} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm">
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Client</label>
+        <select name="clientId" value={formData.clientId || ''} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm">
+          <option value="">No Client Linked</option>
+          {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Department</label>
+        <select name="deptId" value={formData.deptId || ''} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm">
+          <option value="">No Dept Linked</option>
+          {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+      </div>
+      <div className="sm:col-span-2">
+        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Owner</label>
+        <select name="ownerId" value={formData.ownerId || ''} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm">
+          <option value="">Unassigned</option>
+          {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Start Date</label>
+        <input type="date" name="startDate" value={formData.startDate || ''} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm" />
+      </div>
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Due Date</label>
+        <input type="date" name="dueDate" value={formData.dueDate || ''} onChange={handleChange} className="fluent-input w-full p-2 rounded-lg text-sm text-rose-600 font-medium" />
+      </div>
     </div>
   );
 
-  // RESTORED CANVAS UI
   const CanvasTaskListUI = useMemo(() => (
     <div className="space-y-2">
       {localTasks.map(task => {
@@ -320,22 +409,56 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
         return (
           <div key={task.id} className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden transition-all">
             <div className="flex items-start gap-3 p-3 hover:bg-slate-50 group min-w-0">
-              <button onClick={() => handleToggleTask(task)} className={`w-5 h-5 flex-shrink-0 rounded-md border flex items-center justify-center transition-colors mt-0.5 ${task.done ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 bg-white hover:border-indigo-400'}`}>{task.done && <Icons.Check />}</button>
-              <textarea value={task.title || ''} onChange={e => handleTaskChange(task.id, 'title', e.target.value)} maxLength={MAX_TITLE_LENGTH} rows={1} className={`flex-1 min-w-0 text-sm bg-transparent focus:outline-none resize-none overflow-hidden ${task.done ? 'line-through text-slate-400' : 'text-slate-800 font-medium'}`} style={{ fieldSizing: 'content' }} />
+              <button onClick={() => handleToggleTask(task)} className={`w-5 h-5 flex-shrink-0 rounded-md border flex items-center justify-center transition-colors mt-0.5 ${task.done ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 bg-white hover:border-indigo-400'}`}>
+                {task.done && <Icons.Check />}
+              </button>
+              <textarea 
+                value={task.title || ''} 
+                onChange={e => handleTaskChange(task.id, 'title', e.target.value)} 
+                maxLength={MAX_TITLE_LENGTH} 
+                rows={1} 
+                className={`flex-1 min-w-0 text-sm bg-transparent focus:outline-none resize-none overflow-hidden ${task.done ? 'line-through text-slate-400' : 'text-slate-800 font-medium'}`} 
+                style={{ fieldSizing: 'content' }} 
+              />
               <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
-                {task.assigneeId && !isExpanded && <span className="w-6 h-6 rounded-full bg-slate-200 text-[10px] flex items-center justify-center font-bold" title={assigneeName}>{assigneeName?.charAt(0) || '?'}</span>}
-                <button onClick={() => setExpandedTaskId(isExpanded ? null : task.id)} className="p-1 text-slate-400 hover:text-indigo-600 bg-slate-100 rounded transition-colors">{isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}</button>
+                {task.assigneeId && !isExpanded && (
+                  <span className="w-6 h-6 rounded-full bg-slate-200 text-[10px] flex items-center justify-center font-bold" title={assigneeName}>
+                    {assigneeName?.charAt(0) || '?'}
+                  </span>
+                )}
+                <button onClick={() => setExpandedTaskId(isExpanded ? null : task.id)} className="p-1 text-slate-400 hover:text-indigo-600 bg-slate-100 rounded transition-colors">
+                  {isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
+                </button>
               </div>
             </div>
             {isExpanded && (
               <div className="bg-indigo-50/30 p-4 border-t border-slate-100 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Assignee</label><select value={task.assigneeId || ''} onChange={e => handleTaskChange(task.id, 'assigneeId', e.target.value)} className="fluent-input w-full text-xs p-1.5 rounded"><option value="">Unassigned</option>{people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Due Date</label><input type="date" value={task.dueDate || ''} onChange={e => handleTaskChange(task.id, 'dueDate', e.target.value)} className="fluent-input w-full text-xs p-1.5 rounded" /></div>
-                  <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Est. Effort (Pts)</label><input type="number" min="0" value={task.effort || 0} onChange={e => handleTaskChange(task.id, 'effort', parseInt(e.target.value, 10))} className="fluent-input w-full text-xs p-1.5 rounded" /></div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Assignee</label>
+                    <select value={task.assigneeId || ''} onChange={e => handleTaskChange(task.id, 'assigneeId', e.target.value)} className="fluent-input w-full text-xs p-1.5 rounded">
+                      <option value="">Unassigned</option>
+                      {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Due Date</label>
+                    <input type="date" value={task.dueDate || ''} onChange={e => handleTaskChange(task.id, 'dueDate', e.target.value)} className="fluent-input w-full text-xs p-1.5 rounded" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Est. Effort (Pts)</label>
+                    <input type="number" min="0" value={task.effort || 0} onChange={e => handleTaskChange(task.id, 'effort', parseInt(e.target.value, 10))} className="fluent-input w-full text-xs p-1.5 rounded" />
+                  </div>
                 </div>
-                <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Task Description</label><textarea value={task.description || ''} onChange={e => handleTaskChange(task.id, 'description', e.target.value)} maxLength={MAX_TEXT_LENGTH} placeholder="Add details, links, or sub-notes here..." className="fluent-input w-full text-xs p-2 rounded min-h-[60px]" /></div>
-                <div className="flex justify-end"><button onClick={() => handleTaskDelete(task.id)} className="text-[10px] text-rose-500 font-bold uppercase tracking-wider flex items-center gap-1 hover:underline"><Icons.Trash /> Delete Task</button></div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Task Description</label>
+                  <textarea value={task.description || ''} onChange={e => handleTaskChange(task.id, 'description', e.target.value)} maxLength={MAX_TEXT_LENGTH} placeholder="Add details, links, or sub-notes here..." className="fluent-input w-full text-xs p-2 rounded min-h-[60px]" />
+                </div>
+                <div className="flex justify-end">
+                  <button onClick={() => handleTaskDelete(task.id)} className="text-[10px] text-rose-500 font-bold uppercase tracking-wider flex items-center gap-1 hover:underline">
+                    <Icons.Trash /> Delete Task
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -351,7 +474,14 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
   const CanvasNotesUI = useMemo(() => (
     <div className="flex flex-col h-full gap-3">
       <div className="flex flex-col gap-2">
-        <textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a new project note..." maxLength={MAX_TEXT_LENGTH} className="fluent-input w-full p-2 rounded-lg text-sm resize-y min-h-[60px]" onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddNote(); }} />
+        <textarea 
+          value={newNote} 
+          onChange={e => setNewNote(e.target.value)} 
+          placeholder="Add a new project note..." 
+          maxLength={MAX_TEXT_LENGTH} 
+          className="fluent-input w-full p-2 rounded-lg text-sm resize-y min-h-[60px]" 
+          onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddNote(); }} 
+        />
         <button onClick={handleAddNote} disabled={!newNote.trim()} className="self-end bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">Add Note</button>
       </div>
       <div className="space-y-2 overflow-y-auto custom-scrollbar flex-1 bg-slate-50 p-3 rounded-xl inner-shadow min-h-[150px]">
@@ -388,15 +518,16 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
                 <textarea name="narrative" value={formData.narrative || ''} onChange={handleChange} maxLength={MAX_TEXT_LENGTH} className="w-full h-full p-2 bg-transparent focus:outline-none resize-none text-sm text-slate-700 leading-relaxed" placeholder="Record overarching project goals, details, and context here..." />
               </DynamicCard>
               
-              {/* Restored Canvas Cards */}
               <DynamicCard id="tasks" title="Task Management" defaultLayout={workspaceLayouts.tasks} onUpdate={handleLayoutUpdate} zIndex={cardZIndexes.tasks} onInteract={bringToFront}>
                  {CanvasTaskListUI}
               </DynamicCard>
+              
               <DynamicCard id="notes" title="Notes" defaultLayout={workspaceLayouts.notes} onUpdate={handleLayoutUpdate} zIndex={cardZIndexes.notes} onInteract={bringToFront}>
                  {CanvasNotesUI}
               </DynamicCard>
+              
               <DynamicCard id="details" title="Details & Routing" defaultLayout={workspaceLayouts.details} onUpdate={handleLayoutUpdate} zIndex={cardZIndexes.details} onInteract={bringToFront}>
-                 <DrawerDetailsUI />
+                 {renderDrawerDetails()}
               </DynamicCard>
             </div>
           </div>
@@ -405,7 +536,6 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
         <div className={`fixed top-0 right-0 h-full w-full md:w-[600px] max-w-[95vw] acrylic-dark transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-50 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`} role="dialog" aria-modal="true" aria-busy={isSaving}>
           <div className="flex flex-col h-full bg-white/95 md:rounded-l-2xl">
             
-            {/* Unified Header */}
             <div className="px-4 md:px-8 py-4 md:py-6 border-b border-slate-200/50 flex justify-between items-center gap-4">
               <input name="name" value={formData.name || ''} onChange={handleChange} placeholder="Enter Project Name" maxLength={MAX_TITLE_LENGTH} className="text-2xl font-bold bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none w-full" />
               <div className="flex items-center gap-2">
@@ -414,10 +544,8 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
               </div>
             </div>
 
-{/* Unified Body - Redesigned as a Widget Dashboard */}
             <div className="p-4 sm:p-8 flex-1 overflow-y-auto flex flex-col gap-4 custom-scrollbar bg-slate-50/50">
               
-              {/* 1. NARRATIVE CARD */}
               <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-1">
                   <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
@@ -435,19 +563,14 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
                 />
               </div>
 
-{/* 2. COMPACT LAUNCHPAD GRID (Inline Action Badge) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                
-                {/* Task Launchpad */}
                 <div 
                   onClick={() => setIsTasksExpanded(true)}
                   className="bg-white border border-slate-200/70 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer relative group"
                 >
-                  {/* Top Right Expand Only */}
                   <div className="absolute top-4 right-4 text-slate-300 group-hover:text-indigo-500 transition-colors">
                     <Icons.Maximize size={16} />
                   </div>
-                  
                   <div className="flex items-center gap-3 pr-10">
                     <div className="p-2 bg-indigo-50/80 text-indigo-600 rounded-lg">
                       <Icons.Check size={18} />
@@ -468,16 +591,13 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
                   </div>
                 </div>
 
-                {/* Notes Launchpad */}
                 <div 
                   onClick={() => setIsNotesExpanded(true)}
                   className="bg-white border border-slate-200/70 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-amber-300 transition-all cursor-pointer relative group"
                 >
-                  {/* Top Right Expand Only */}
                   <div className="absolute top-4 right-4 text-slate-300 group-hover:text-amber-500 transition-colors">
                     <Icons.Maximize size={16} />
                   </div>
-
                   <div className="flex items-center gap-3 pr-10">
                     <div className="p-2 bg-amber-50/80 text-amber-600 rounded-lg">
                       <Icons.FileText size={18} />
@@ -497,10 +617,8 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
                     </div>
                   </div>
                 </div>
-
               </div>
 
-              {/* 3. DETAILS & ROUTING CARD */}
               <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
                   <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
@@ -508,19 +626,17 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
                     Details & Routing
                   </h3>
                 </div>
-                
-                {/* The details form component */}
-                <DrawerDetailsUI />
-                
-                    
-
+                {renderDrawerDetails()}
               </div>
             </div>
 
-            {/* Unified Footer */}
             <div className="p-4 md:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-3 md:rounded-bl-2xl">
-              <button type="button" onClick={handleProjectDelete} disabled={isSaving} className="text-rose-500 hover:text-rose-600 text-sm font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"><Icons.Trash /> Remove Project</button>
-              <button type="button" onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-2.5 rounded-lg text-sm font-medium shadow-lg hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">{isSaving ? 'Saving...' : 'Save & Close'}</button>
+              <button type="button" onClick={handleProjectDelete} disabled={isSaving} className="text-rose-500 hover:text-rose-600 text-sm font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                <Icons.Trash /> Remove Project
+              </button>
+              <button type="button" onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-2.5 rounded-lg text-sm font-medium shadow-lg hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                {isSaving ? 'Saving...' : 'Save & Close'}
+              </button>
             </div>
           </div>
         </div>
@@ -537,8 +653,12 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
                 <p className="text-sm text-slate-500">{formData.name || 'Project'}</p>
               </div>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => openTaskModal()} className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-sm transition-colors"><Icons.Plus /> Add Task</button>
-                <button type="button" onClick={() => setIsTasksExpanded(false)} className="p-2 rounded-full hover:bg-slate-200 text-slate-500"><Icons.Close /></button>
+                <button type="button" onClick={() => openTaskModal()} className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
+                  <Icons.Plus /> Add Task
+                </button>
+                <button type="button" onClick={() => setIsTasksExpanded(false)} className="p-2 rounded-full hover:bg-slate-200 text-slate-500">
+                  <Icons.Close />
+                </button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30 custom-scrollbar">
@@ -550,10 +670,13 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <select value={taskFilterType} onChange={(e) => setTaskFilterType(e.target.value)} className="fluent-input text-sm p-2 rounded-lg border-slate-200 flex-1 sm:flex-none">
-                      <option value="All">All Tasks</option><option value="Open">Open</option><option value="Completed">Completed</option>
+                      <option value="All">All Tasks</option>
+                      <option value="Open">Open</option>
+                      <option value="Completed">Completed</option>
                     </select>
                     <select value={taskSortOrder} onChange={(e) => setTaskSortOrder(e.target.value)} className="fluent-input text-sm p-2 rounded-lg border-slate-200 flex-1 sm:flex-none">
-                      <option value="Newest">Newest First</option><option value="Due Date">Due Date</option>
+                      <option value="Newest">Newest First</option>
+                      <option value="Due Date">Due Date</option>
                     </select>
                   </div>
                 </div>
@@ -562,7 +685,9 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
                   {processedTasks.length === 0 && <div className="text-sm text-slate-400 text-center py-12 bg-white border border-slate-200 border-dashed rounded-xl">No tasks found.</div>}
                   {processedTasks.map((task) => (
                     <div key={task.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group flex items-start gap-4">
-                      <button onClick={() => handleToggleTask(task)} className={`w-5 h-5 mt-1 flex-shrink-0 rounded-md border flex items-center justify-center transition-colors ${task.done ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 bg-slate-50 hover:border-indigo-400'}`}>{task.done && <Icons.Check />}</button>
+                      <button onClick={() => handleToggleTask(task)} className={`w-5 h-5 mt-1 flex-shrink-0 rounded-md border flex items-center justify-center transition-colors ${task.done ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 bg-slate-50 hover:border-indigo-400'}`}>
+                        {task.done && <Icons.Check />}
+                      </button>
                       <div className="flex-1 min-w-0">
                          <div className={`text-base font-semibold ${task.done ? 'line-through text-slate-400' : 'text-slate-800'}`}>{task.title}</div>
                          {task.description && <p className="text-sm text-slate-500 mt-1 line-clamp-2">{task.description}</p>}
@@ -640,8 +765,12 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
                 <p className="text-sm text-slate-500">{formData.name || 'Project'}</p>
               </div>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => openNoteModal()} className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-sm transition-colors"><Icons.Plus /> Add Note</button>
-                <button type="button" onClick={() => setIsNotesExpanded(false)} className="p-2 rounded-full hover:bg-slate-200 text-slate-500"><Icons.Close /></button>
+                <button type="button" onClick={() => openNoteModal()} className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
+                  <Icons.Plus /> Add Note
+                </button>
+                <button type="button" onClick={() => setIsNotesExpanded(false)} className="p-2 rounded-full hover:bg-slate-200 text-slate-500">
+                  <Icons.Close />
+                </button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30 custom-scrollbar">
@@ -653,7 +782,8 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <select value={noteSortOrder} onChange={(e) => setNoteSortOrder(e.target.value)} className="fluent-input text-sm p-2 rounded-lg border-slate-200 flex-1 sm:flex-none">
-                      <option value="Newest">Newest First</option><option value="Oldest">Oldest First</option>
+                      <option value="Newest">Newest First</option>
+                      <option value="Oldest">Oldest First</option>
                     </select>
                   </div>
                 </div>
@@ -704,8 +834,5 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
     </>
   );
 };
-
-
-// --- INTEGRATED VIEW COMPONENTS ---
 
 export { ProjectWorkspace }

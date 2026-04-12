@@ -87,16 +87,13 @@ const ClientWorkspace = ({ client, onClose, showToast, requestConfirm }) => {
     );
   }, [communications, client.id]);
 
-  // Processed Communications for the Expanded Modal
   const processedComms = useMemo(() => {
     let result = [...localComms];
 
-    // 1. Filter by Type
     if (filterType !== 'All') {
       result = result.filter(c => c.type === filterType);
     }
 
-    // 2. Search by Text
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       result = result.filter(c => 
@@ -105,7 +102,6 @@ const ClientWorkspace = ({ client, onClose, showToast, requestConfirm }) => {
       );
     }
 
-    // 3. Sort Order (localComms is already 'Newest' first)
     if (sortOrder === 'Oldest') {
       result = result.reverse();
     }
@@ -131,7 +127,6 @@ const ClientWorkspace = ({ client, onClose, showToast, requestConfirm }) => {
     setNewCommText('');
     setNewCommType(DEFAULT_COMM_TYPE);
     
-    // Reset filters when client changes
     setSearchQuery('');
     setFilterType('All');
     setSortOrder('Newest');
@@ -296,15 +291,26 @@ const ClientWorkspace = ({ client, onClose, showToast, requestConfirm }) => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleClose, handleSave, isSaving, isAddCommModalOpen, isCommHistoryExpanded]);
 
-  const ContactFieldsUI = () => (
+  // --- UI RENDER FUNCTIONS ---
+  
+  const renderContactFields = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div><label htmlFor="client-contact-name" className="text-xs font-bold text-slate-500 uppercase block mb-1">Primary Contact</label><input id="client-contact-name" name="contactName" value={formData.contactName} onChange={handleChange} maxLength={MAX_TITLE_LENGTH} autoComplete="name" className="fluent-input w-full p-2 rounded-lg text-sm" /></div>
-      <div><label htmlFor="client-phone" className="text-xs font-bold text-slate-500 uppercase block mb-1">Phone</label><input id="client-phone" name="phone" type="tel" value={formData.phone} onChange={handleChange} maxLength={MAX_TITLE_LENGTH} autoComplete="tel" className="fluent-input w-full p-2 rounded-lg text-sm" /></div>
-      <div className="sm:col-span-2"><label htmlFor="client-email" className="text-xs font-bold text-slate-500 uppercase block mb-1">Email</label><input id="client-email" name="email" type="email" value={formData.email} onChange={handleChange} maxLength={MAX_TITLE_LENGTH} autoComplete="email" className="fluent-input w-full p-2 rounded-lg text-sm" /></div>
+      <div>
+        <label htmlFor="client-contact-name" className="text-xs font-bold text-slate-500 uppercase block mb-1">Primary Contact</label>
+        <input id="client-contact-name" name="contactName" value={formData.contactName} onChange={handleChange} maxLength={MAX_TITLE_LENGTH} autoComplete="name" className="fluent-input w-full p-2 rounded-lg text-sm" />
+      </div>
+      <div>
+        <label htmlFor="client-phone" className="text-xs font-bold text-slate-500 uppercase block mb-1">Phone</label>
+        <input id="client-phone" name="phone" type="tel" value={formData.phone} onChange={handleChange} maxLength={MAX_TITLE_LENGTH} autoComplete="tel" className="fluent-input w-full p-2 rounded-lg text-sm" />
+      </div>
+      <div className="sm:col-span-2">
+        <label htmlFor="client-email" className="text-xs font-bold text-slate-500 uppercase block mb-1">Email</label>
+        <input id="client-email" name="email" type="email" value={formData.email} onChange={handleChange} maxLength={MAX_TITLE_LENGTH} autoComplete="email" className="fluent-input w-full p-2 rounded-lg text-sm" />
+      </div>
     </div>
   );
 
-  const CommunicationHistoryUI = () => {
+  const renderCommunicationHistory = () => {
     if (client.isNew) {
       return (
         <div className="flex-1 flex flex-col gap-3">
@@ -335,7 +341,6 @@ const ClientWorkspace = ({ client, onClose, showToast, requestConfirm }) => {
           <textarea id="client-comm-text" value={newCommText} onChange={handleCommTextChange} onKeyDown={handleCommInputKeyDown} placeholder="Log a communication... (Ctrl+Enter to save)" aria-label="Communication details" maxLength={MAX_TEXT_LENGTH} className="fluent-input w-full p-2 rounded-lg text-sm resize-y min-h-[80px]" />
           <button type="button" onClick={handleAddComm} disabled={isSaving || !hasCommDraft} className="self-end bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">Add</button>
         </div>
-
       </>
     );
   };
@@ -351,7 +356,9 @@ const ClientWorkspace = ({ client, onClose, showToast, requestConfirm }) => {
             <button type="button" onClick={handleClose} aria-label="Close client workspace" disabled={isSaving} className="p-2 rounded-full hover:bg-slate-200 text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"><Icons.Close /></button>
           </div>
           <div className="p-4 md:p-8 flex-1 overflow-y-auto flex flex-col gap-6 custom-scrollbar">
-            <ContactFieldsUI />
+            
+            {renderContactFields()}
+
             <div className="flex flex-col">
               <div className="flex items-center justify-between mb-3 border-b pb-2">
                 <h3 className="text-xs font-bold text-slate-500 uppercase">{client.isNew ? 'Initial Communication' : 'Communication History'}</h3>
@@ -359,7 +366,9 @@ const ClientWorkspace = ({ client, onClose, showToast, requestConfirm }) => {
                   <button type="button" onClick={() => setIsCommHistoryExpanded(true)} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"><Icons.Maximize /> All Communications</button>
                 )}
               </div>
-              <CommunicationHistoryUI />
+              
+              {renderCommunicationHistory()}
+
             </div>
           </div>
           <div className="p-4 md:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-3 md:rounded-bl-2xl">
@@ -388,7 +397,6 @@ const ClientWorkspace = ({ client, onClose, showToast, requestConfirm }) => {
               <div className="mx-auto max-w-4xl">
                 <div className="space-y-4">
                   
-                  {/* Search, Filter, Sort Controls */}
                   <div className="flex flex-col sm:flex-row gap-3 justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                     <div className="flex-1 w-full relative">
                       <input 

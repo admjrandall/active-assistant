@@ -12,10 +12,14 @@ const PERSON_DEFAULT_COMM_TYPE = PERSON_ALLOWED_COMM_TYPES[0];
 const PERSON_MAX_COMMUNICATIONS = 1000;
 
 const PERSON_MESSAGES = {
-  PERSON_CREATED: 'New team member created.', PERSON_UPDATED: 'Team member updated.', PERSON_REMOVED: 'Team member removed.',
-  SAVE_FAILED: 'Failed to save team member.', REMOVE_FAILED: 'Failed to remove team member.',
+  PERSON_CREATED: 'New team member created.', 
+  PERSON_UPDATED: 'Team member updated.', 
+  PERSON_REMOVED: 'Team member removed.',
+  SAVE_FAILED: 'Failed to save team member.', 
+  REMOVE_FAILED: 'Failed to remove team member.',
   DELETE_BLOCKED: 'Reassign linked projects and tasks before removing this team member.',
-  CONFIRM_DELETE_PERSON: 'Are you sure you want to remove this team member?', CONFIRM_DISCARD_PERSON: 'Discard this unsaved team member draft?',
+  CONFIRM_DELETE_PERSON: 'Are you sure you want to remove this team member?', 
+  CONFIRM_DISCARD_PERSON: 'Discard this unsaved team member draft?',
   CONFIRM_CLOSE_UNSAVED: 'You have unsaved changes. Are you sure you want to close?',
   INVALID_COMMUNICATION_TYPE: 'Invalid communication type selected.',
   MAX_COMMUNICATIONS_REACHED: `Maximum of ${PERSON_MAX_COMMUNICATIONS} communications reached.`,
@@ -23,18 +27,29 @@ const PERSON_MESSAGES = {
 };
 
 const createEditablePersonState = (person) => ({
-  name: sanitizeInput(person?.name || '', MAX_TITLE_LENGTH), email: sanitizeInput(person?.email || '', MAX_TITLE_LENGTH), role: sanitizeInput(person?.role || '', MAX_TITLE_LENGTH),
+  name: sanitizeInput(person?.name || '', MAX_TITLE_LENGTH), 
+  email: sanitizeInput(person?.email || '', MAX_TITLE_LENGTH), 
+  role: sanitizeInput(person?.role || '', MAX_TITLE_LENGTH),
 });
 
 const normalizePersonField = (value) => sanitizeInput((value || '').trim(), MAX_TITLE_LENGTH);
 const normalizePersonCommunicationNotes = (value) => sanitizeInput((value || '').trim(), MAX_TEXT_LENGTH);
-const normalizePersonFields = (personData) => ALLOWED_PERSON_FIELDS.reduce((acc, field) => { acc[field] = normalizePersonField(personData?.[field]); return acc; }, {});
+
+const normalizePersonFields = (personData) => ALLOWED_PERSON_FIELDS.reduce((acc, field) => { 
+  acc[field] = normalizePersonField(personData?.[field]); 
+  return acc; 
+}, {});
+
 const hasPersonFieldChanges = (originalFields, currentFields) => ALLOWED_PERSON_FIELDS.some((field) => originalFields[field] !== currentFields[field]);
 const isEmptyPersonDraft = (normalizedFields) => !normalizedFields.name && !normalizedFields.email && (!normalizedFields.role || normalizedFields.role === DEFAULT_ROLE);
 
 const buildPersonRecord = (sourcePerson, editedFields) => ({
-  id: sourcePerson.id, name: normalizePersonField(editedFields.name) || 'Unnamed Member', email: normalizePersonField(editedFields.email), role: normalizePersonField(editedFields.role),
-  x: typeof sourcePerson?.x === 'number' ? sourcePerson.x : 0, y: typeof sourcePerson?.y === 'number' ? sourcePerson.y : 0,
+  id: sourcePerson.id, 
+  name: normalizePersonField(editedFields.name) || 'Unnamed Member', 
+  email: normalizePersonField(editedFields.email), 
+  role: normalizePersonField(editedFields.role),
+  x: typeof sourcePerson?.x === 'number' ? sourcePerson.x : 0, 
+  y: typeof sourcePerson?.y === 'number' ? sourcePerson.y : 0,
 });
 
 const sortPersonCommunicationsByDate = (records) => [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -195,7 +210,6 @@ const PersonWorkspace = ({ person, onClose, showToast, requestConfirm }) => {
     requestConfirm('Remove Member', PERSON_MESSAGES.CONFIRM_DELETE_PERSON, async () => {
       try {
         setIsSaving(true); 
-        // Cascade delete member communications
         for (const communication of localComms) {
           await DB.delete('communications', communication.id);
         }
@@ -218,11 +232,20 @@ const PersonWorkspace = ({ person, onClose, showToast, requestConfirm }) => {
     document.addEventListener('keydown', handleKeyDown); return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleClose, handleSave, isSaving, isAddCommModalOpen, isCommHistoryExpanded]);
 
-  const ContactFieldsUI = () => (
+
+  // --- UI RENDER FUNCTIONS ---
+
+  const renderContactFields = () => (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Email</label><input name="email" type="email" value={formData.email} onChange={handleChange} maxLength={MAX_TITLE_LENGTH} className="fluent-input w-full p-2.5 rounded-lg text-sm" /></div>
-        <div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Role / Title</label><input name="role" value={formData.role} onChange={handleChange} maxLength={MAX_TITLE_LENGTH} className="fluent-input w-full p-2.5 rounded-lg text-sm" /></div>
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Email</label>
+          <input name="email" type="email" value={formData.email} onChange={handleChange} maxLength={MAX_TITLE_LENGTH} className="fluent-input w-full p-2.5 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Role / Title</label>
+          <input name="role" value={formData.role} onChange={handleChange} maxLength={MAX_TITLE_LENGTH} className="fluent-input w-full p-2.5 rounded-lg text-sm" />
+        </div>
       </div>
 
       <section className={`rounded-xl border p-4 ${showLinkedWorkWarning ? 'border-amber-200 bg-amber-50/80' : 'border-slate-200 bg-slate-50/80'}`}>
@@ -234,14 +257,20 @@ const PersonWorkspace = ({ person, onClose, showToast, requestConfirm }) => {
           <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${showLinkedWorkWarning ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}`}>{showLinkedWorkWarning ? 'Action Needed' : 'Summary'}</span>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-lg bg-white border border-slate-200/60 px-3 py-2 shadow-sm"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Projects Owned</div><div className="mt-1 text-lg font-semibold text-slate-900">{ownedProjects.length}</div></div>
-          <div className="rounded-lg bg-white border border-slate-200/60 px-3 py-2 shadow-sm"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tasks Assigned</div><div className="mt-1 text-lg font-semibold text-slate-900">{assignedTasks.length}</div></div>
+          <div className="rounded-lg bg-white border border-slate-200/60 px-3 py-2 shadow-sm">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Projects Owned</div>
+            <div className="mt-1 text-lg font-semibold text-slate-900">{ownedProjects.length}</div>
+          </div>
+          <div className="rounded-lg bg-white border border-slate-200/60 px-3 py-2 shadow-sm">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tasks Assigned</div>
+            <div className="mt-1 text-lg font-semibold text-slate-900">{assignedTasks.length}</div>
+          </div>
         </div>
       </section>
     </div>
   );
 
-  const CommunicationHistoryUI = () => {
+  const renderCommunicationHistory = () => {
     if (person.isNew) {
       return (
         <div className="flex-1 flex flex-col gap-3">
@@ -287,7 +316,9 @@ const PersonWorkspace = ({ person, onClose, showToast, requestConfirm }) => {
           </div>
           
           <div className="p-4 md:p-8 flex-1 overflow-y-auto flex flex-col gap-6 custom-scrollbar">
-            <ContactFieldsUI />
+            
+            {renderContactFields()}
+
             <div className="flex flex-col">
               <div className="flex items-center justify-between mb-3 border-b pb-2">
                 <h3 className="text-xs font-bold text-slate-500 uppercase">{person.isNew ? 'Initial Communication' : 'Communication History'}</h3>
@@ -295,7 +326,9 @@ const PersonWorkspace = ({ person, onClose, showToast, requestConfirm }) => {
                   <button type="button" onClick={() => setIsCommHistoryExpanded(true)} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"><Icons.Maximize /> Expand</button>
                 )}
               </div>
-              <CommunicationHistoryUI />
+              
+              {renderCommunicationHistory()}
+
             </div>
           </div>
           
