@@ -7,9 +7,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { CRMContext, StorageModeContext } from './context.jsx'
 import { Icons } from './components/Icons.jsx'
-import {
-  DataverseDB, setStorageMode, getStorageMode,
-} from './db/index.js'
+import { DataverseDB, setStorageMode, getStorageMode } from './db/index.js'
 import { VaultDB } from './vault/VaultDB.js'
 import { encryptVault } from './vault/crypto.js'
 
@@ -53,16 +51,19 @@ const App = () => {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false })
   const [isDataModalOpen, setIsDataModalOpen] = useState(false)
 
+  // ── Environment Hub State ─────────────────────────────────────────────────────
+  const [isEnvMenuOpen, setIsEnvMenuOpen] = useState(false)
+  const envMenuRef = useRef(null)
+
   // ── Storage mode ──────────────────────────────────────────────────────────────
   const [storageMode, setStorageModeState] = useState(getStorageMode())
-  const [activeDB, setActiveDB]           = useState(
-    () => getStorageMode() === 'm365' ? DataverseDB : VaultDB
-  )
+  const [activeDB, setActiveDB]           = useState(() => getStorageMode() === 'm365' ? DataverseDB : VaultDB)
   const [m365AuthStatus, setM365AuthStatus] = useState('idle')
   const [m365UserName, setM365UserName]     = useState('')
 
   // Vault session context (Offline mode)
   const vaultCtxRef = useRef(null)   // { password }
+  const [fileHandle, setFileHandle] = useState(null) // Native File System Handle
 
   // ── Load all data from active DB ──────────────────────────────────────────────
   const loadAllData = useCallback(async () => {
@@ -81,8 +82,8 @@ const App = () => {
     }
   }, [activeDB])
 
-  // ── Download encrypted vault file (Offline mode) ──────────────────────────────
-  const downloadVault = useCallback(async () => {
+  // ── Smart Save (Native File System API) ───────────────────────────────────────
+  const handleSaveVault = useCallback(async (forceDownload = false) => {
     const ctx = vaultCtxRef.current
     if (!ctx) return
     setSaveStatus('saving')
@@ -90,6 +91,34 @@ const App = () => {
       const snapshot  = VaultDB.getSnapshot()
       const encrypted = await encryptVault(snapshot, ctx.password)
       const blob = new Blob([encrypted], { type: 'application/octet-stream' })
+
+      // Attempt to use modern File System Access API for silent overwriting
+      if (!forceDownload && 'showSaveFilePicker' in window) {
+        try {
+          let handle = fileHandle;
+          if (!handle) {
+            handle = await window.showSaveFilePicker({
+              suggestedName: 'active-assistant-vault.dat',
+              types: [{ description: 'Vault Data', accept: { 'application/octet-stream': ['.dat'] } }]
+            });
+            setFileHandle(handle);
+          }
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          setSaveStatus('saved');
+          showToast('Vault synced directly to disk.');
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            setSaveStatus('unsaved');
+            return;
+          }
+          console.warn('File System API failed, falling back to standard download.', err);
+        }
+      }
+
+      // Fallback for browsers without File System API, or if Force Download is requested
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
       a.href     = url
@@ -97,13 +126,38 @@ const App = () => {
       a.click()
       URL.revokeObjectURL(url)
       setSaveStatus('saved')
-      showToast('Vault file downloaded successfully.')
+      showToast('Vault backup file downloaded.')
     } catch (err) {
-      console.error('[Vault download]', err)
+      console.error('[Vault save]', err)
       setSaveStatus('error')
-      showToast('Failed to prepare vault file for download.')
+      showToast('Failed to save vault file.')
     }
-  }, [])
+  }, [fileHandle])
+
+  // ── Global Ctrl+S Listener ────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (storageMode === 'offline' && saveStatus === 'unsaved') {
+          handleSaveVault();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [storageMode, saveStatus, handleSaveVault]);
+
+  // ── Handle clicks outside the Environment Menu ────────────────────────────────
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (envMenuRef.current && !envMenuRef.current.contains(event.target)) {
+        setIsEnvMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // ── Called by AuthGate when successfully authenticated ────────────────────────
   const handleAppUnlocked = useCallback(async ({ mode, password, account }) => {
@@ -129,25 +183,29 @@ const App = () => {
     }
   }, [loadAllData])
 
-  // ── Lock session / Sign out ───────────────────────────────────────────────────
+  // ── Switch Environment / Lock Session ─────────────────────────────────────────
   const handleLockSession = useCallback(async () => {
     setSaveStatus('saving')
     try {
       if (storageMode === 'offline' && saveStatus === 'unsaved') {
-        await downloadVault()
+        await handleSaveVault(true); 
       }
     } finally {
       VaultDB.clear()
       vaultCtxRef.current = null
+      setFileHandle(null)
+
+      // CRITICAL FIX: Wipe the saved mode so it forces the mode-select screen on reload
+      localStorage.removeItem('aa-storage-mode')
+
       setDbReady(false)
       setProjects([]); setTasks([]); setPeople([])
       setDepartments([]); setClients([]); setCommunications([])
-      if (storageMode === 'm365') {
-         // Force reload to trigger AuthGate MSAL check if needed
-         window.location.reload()
-      }
+
+      // Force React to completely reset to the initial state
+      window.location.reload()
     }
-  }, [storageMode, saveStatus, downloadVault])
+  }, [storageMode, saveStatus, handleSaveVault])
 
   // ── Warn before closing tab if offline mode has unsaved changes ───────────────
   useEffect(() => {
@@ -202,35 +260,6 @@ const App = () => {
     return <AuthGate onUnlocked={handleAppUnlocked} />
   }
 
-  // ── Save status indicator ─────────────────────────────────────────────────────
-  const SaveIndicator = () => {
-    if (storageMode !== 'offline') return null
-
-    if (saveStatus === 'unsaved') {
-      return (
-        <button onClick={downloadVault} title="Download encrypted vault file to save your changes"
-          className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md border text-amber-700 bg-amber-50 border-amber-200 hover:bg-amber-100 transition-colors">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-          Save file ↓
-        </button>
-      )
-    }
-
-    return (
-      <div className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md border transition-colors ${
-        saveStatus === 'saving' ? 'text-amber-700 bg-amber-50 border-amber-200' :
-        saveStatus === 'error'  ? 'text-rose-700 bg-rose-50 border-rose-200' :
-                                  'text-emerald-700 bg-emerald-50 border-emerald-200'
-      }`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${
-          saveStatus === 'saving' ? 'bg-amber-400 animate-pulse' :
-          saveStatus === 'error'  ? 'bg-rose-400' : 'bg-emerald-400'
-        }`} />
-        {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'error' ? 'Save failed' : 'Saved'}
-      </div>
-    )
-  }
-
   return (
     <StorageModeContext.Provider value={{ storageMode, m365AuthStatus, m365UserName }}>
       <CRMContext.Provider value={{ projects, clients, people, tasks, departments, communications, DB: activeDB, loadAllData }}>
@@ -258,26 +287,19 @@ const App = () => {
           {/* ── Main Content ── */}
           <main className="flex-1 flex flex-col relative h-full min-w-0">
 
-            {/* Header */}
-            <header className="h-14 sm:h-16 acrylic border-b border-slate-200/50 flex items-center justify-between px-3 sm:px-8 z-10 sticky top-0">
+            {/* ── Header ── Z-INDEX FIXED TO HUGE NUMBER */}
+            <header className="h-14 sm:h-16 acrylic border-b border-slate-200/50 flex items-center justify-between px-3 sm:px-8 z-[9999999] sticky top-0">
+              
+              {/* Left: Title & Data Button */}
               <div className="flex items-center gap-2 sm:gap-4 min-w-0">
                 <h1 className="font-semibold text-slate-800 tracking-tight text-base sm:text-lg whitespace-nowrap">Active Assistant</h1>
                 <div className="hidden sm:block h-4 w-px bg-slate-300" />
-
-                <div className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md border ${
-                    storageMode === 'm365' ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-indigo-700 bg-indigo-50 border-indigo-200'
-                  }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${storageMode === 'm365' ? 'bg-blue-500' : 'bg-indigo-500'}`} />
-                  {storageMode === 'm365' ? `M365 · ${m365UserName.split(' ')[0]}` : 'Offline Vault'}
-                </div>
-
-                <SaveIndicator />
-
                 <button onClick={() => setIsDataModalOpen(true)} className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-1.5 rounded-md border border-slate-200 transition-colors">
                   <Icons.Database size={14} /> Data
                 </button>
               </div>
 
+              {/* Right: Actions & Environment Hub */}
               <div className="flex items-center gap-2 sm:gap-3">
                 {navSection !== 'dashboard' && (
                   <div className="flex bg-slate-200/60 p-0.5 sm:p-1 rounded-lg border border-slate-200/50">
@@ -292,18 +314,78 @@ const App = () => {
                 {navSection === 'clients'  && <button onClick={handleCreateClient}  className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-2 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-md transition-colors"><Icons.Plus /><span className="hidden sm:inline">Add Client</span></button>}
                 {navSection === 'people'   && <button onClick={handleCreatePerson}  className="flex items-center gap-1 bg-indigo-600 text-white text-sm font-medium px-2 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 shadow-md transition-colors"><Icons.Plus /><span className="hidden sm:inline">Add Member</span></button>}
 
-                <button
-                  onClick={() => requestConfirm(storageMode === 'offline' ? 'Lock Vault' : 'Sign Out', storageMode === 'offline' ? 'Save your work and lock the vault? All data will be cleared from memory.' : 'Sign out and clear session data?', handleLockSession)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 px-2.5 py-2 rounded-lg border border-slate-200 transition-colors"
-                  title="Lock Session"
-                >
-                  <Icons.Close size={14} />
-                  <span className="hidden sm:inline">Lock</span>
-                </button>
+                {/* ── Environment Hub Menu ── */}
+                <div className="relative ml-2" ref={envMenuRef}>
+                  <button 
+                    onClick={() => setIsEnvMenuOpen(!isEnvMenuOpen)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-sm"
+                  >
+                    <div className={`w-2 h-2 rounded-full ${
+                      storageMode === 'm365' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 
+                      saveStatus === 'saving' ? 'bg-indigo-400 animate-pulse' :
+                      saveStatus === 'unsaved' ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] animate-pulse' : 
+                      saveStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                    }`} />
+                    <span className="text-sm font-medium text-slate-700 hidden sm:block">
+                      {storageMode === 'm365' ? 'M365 Sync' : 'Local Vault'}
+                    </span>
+                    <span className="text-xs text-slate-400 ml-1">▼</span>
+                  </button>
+
+                  {/* Dropdown Content */}
+                  {isEnvMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200/60 overflow-hidden z-[100] py-1 animate-in fade-in slide-in-from-top-2">
+                      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 mb-1">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Current Environment</p>
+                        <p className="text-sm font-semibold text-slate-800 truncate">
+                          {storageMode === 'm365' ? m365UserName : 'Air-Gapped Workflow'}
+                        </p>
+                      </div>
+
+                      {storageMode === 'offline' && (
+                        <>
+                          <button onClick={() => { handleSaveVault(); setIsEnvMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between transition-colors">
+                            <span className="flex items-center gap-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                              Save to Disk
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono bg-slate-100 px-1.5 py-0.5 rounded">Ctrl+S</span>
+                          </button>
+                          <button onClick={() => { handleSaveVault(true); setIsEnvMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 flex items-center gap-2 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Export Backup (.dat)
+                          </button>
+                        </>
+                      )}
+
+                      {storageMode === 'm365' && (
+                         <button onClick={() => { loadAllData(); setIsEnvMenuOpen(false); showToast('Synced with Dataverse.'); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 flex items-center gap-2 transition-colors">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                           Force Cloud Sync
+                         </button>
+                      )}
+
+                      <div className="h-px bg-slate-100 my-1 mx-2" />
+
+                      <button onClick={() => { 
+                        setIsEnvMenuOpen(false); 
+                        requestConfirm(
+                          storageMode === 'offline' ? 'Switch Environment' : 'Sign Out', 
+                          storageMode === 'offline' ? 'Save your work and close the vault? All data will be safely cleared from memory.' : 'Sign out and clear session data?', 
+                          handleLockSession
+                        ); 
+                      }} className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        Switch Environments
+                      </button>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </header>
 
-            {/* Content area */}
+            {/* ── Content area ── */}
             <div className={`flex-1 relative overflow-y-auto transition-all duration-500 pb-16 sm:pb-0 ${
               (activeProject || activePerson || activeClient || confirmDialog.isOpen) ? 'blur-sm scale-[0.99] opacity-70 pointer-events-none' : ''
             }`}>
@@ -320,7 +402,7 @@ const App = () => {
               {navSection === 'people'   && viewMode === 'list'    && <PeopleListView   onOpenPerson={setActivePerson} />}
             </div>
 
-            {/* Workspace drawers */}
+            {/* ── Workspace drawers ── */}
             {activeProject && <ProjectWorkspace project={activeProject} onClose={() => setActiveProject(null)} showToast={showToast} requestConfirm={requestConfirm} />}
             {activePerson  && <PersonWorkspace  person={activePerson}   onClose={() => setActivePerson(null)}  showToast={showToast} requestConfirm={requestConfirm} />}
             {activeClient  && <ClientWorkspace  client={activeClient}   onClose={() => setActiveClient(null)}  showToast={showToast} requestConfirm={requestConfirm} />}
