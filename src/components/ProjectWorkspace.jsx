@@ -533,18 +533,18 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
           </div>
         </div>
       ) : (
-        <div className={`fixed top-0 right-0 h-full w-full md:w-[600px] max-w-[95vw] acrylic-dark transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-50 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`} role="dialog" aria-modal="true" aria-busy={isSaving}>
-          <div className="flex flex-col h-full bg-white/95 md:rounded-l-2xl">
-            
-            <div className="px-4 md:px-8 py-4 md:py-6 border-b border-slate-200/50 flex justify-between items-center gap-4">
-              <input name="name" value={formData.name || ''} onChange={handleChange} placeholder="Enter Project Name" maxLength={MAX_TITLE_LENGTH} className="text-2xl font-bold bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none w-full" />
-              <div className="flex items-center gap-2">
+        <div className={`fixed inset-y-0 right-0 w-full md:w-[600px] max-w-full acrylic-dark transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-[10000001] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`} role="dialog" aria-modal="true" aria-busy={isSaving}>
+          <div className="flex flex-col h-full bg-white/95 md:rounded-l-2xl overflow-hidden">
+
+            <div className="px-4 md:px-6 py-4 md:py-6 border-b border-slate-200/50 flex justify-between items-center gap-4 flex-shrink-0">
+              <input name="name" value={formData.name || ''} onChange={handleChange} placeholder="Enter Project Name" maxLength={MAX_TITLE_LENGTH} className="text-2xl font-bold bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none w-full min-w-0" />
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button onClick={() => setIsCanvasMode(true)} className="hidden md:flex p-2 rounded-full hover:bg-slate-200 text-slate-500 transition-colors" title="Spatial Canvas"><Icons.Maximize /></button>
                 <button onClick={handleClose} disabled={isSaving} className="p-2 rounded-full hover:bg-slate-200 text-slate-500 disabled:opacity-50 transition-colors"><Icons.Close /></button>
               </div>
             </div>
 
-            <div className="p-4 sm:p-8 flex-1 overflow-y-auto flex flex-col gap-4 custom-scrollbar bg-slate-50/50">
+            <div className="px-4 sm:px-6 py-4 sm:py-6 flex-1 overflow-y-auto flex flex-col gap-4 custom-scrollbar bg-slate-50/50">
               
               <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-1">
@@ -630,7 +630,7 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
               </div>
             </div>
 
-            <div className="p-4 md:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-3 md:rounded-bl-2xl">
+            <div className="px-4 md:px-6 py-4 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-3 md:rounded-bl-2xl flex-shrink-0">
               <button type="button" onClick={handleProjectDelete} disabled={isSaving} className="text-rose-500 hover:text-rose-600 text-sm font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed">
                 <Icons.Trash /> Remove Project
               </button>
@@ -645,8 +645,8 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
       {/* Level 1 Modal: Expanded Tasks */}
       {isTasksExpanded && (
         <>
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] transition-opacity duration-300" onClick={() => setIsTasksExpanded(false)} />
-          <div className="fixed inset-4 md:inset-8 lg:inset-x-32 lg:inset-y-12 bg-white rounded-2xl shadow-2xl z-[70] flex flex-col overflow-hidden modal-enter">
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[10000002] transition-opacity duration-300" onClick={() => setIsTasksExpanded(false)} />
+          <div className="fixed inset-4 md:inset-8 lg:inset-x-32 lg:inset-y-12 bg-white rounded-2xl shadow-2xl z-[10000003] flex flex-col overflow-hidden modal-enter">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div>
                 <h2 className="text-xl font-bold text-slate-800">Task Management</h2>
@@ -712,9 +712,9 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
 
       {/* Level 2 Modal: Add/Edit Task */}
       {isTaskModalOpen && (
-         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+         <div className="fixed inset-0 z-[10000004] flex items-center justify-center p-4">
            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300" onClick={() => setIsTaskModalOpen(false)} />
-           <div className="relative w-full max-w-[600px] bg-white rounded-2xl shadow-2xl z-[90] flex flex-col overflow-hidden modal-enter">
+           <div className="relative w-full max-w-[600px] bg-white rounded-2xl shadow-2xl z-[10000005] flex flex-col overflow-hidden modal-enter">
              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                <h2 className="text-lg font-bold text-slate-800">{editingTaskId ? 'Edit Task' : 'Add New Task'}</h2>
                <button type="button" onClick={() => setIsTaskModalOpen(false)} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500"><Icons.Close /></button>
@@ -757,8 +757,8 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
       {/* Level 1 Modal: Expanded Notes */}
       {isNotesExpanded && (
         <>
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] transition-opacity duration-300" onClick={() => setIsNotesExpanded(false)} />
-          <div className="fixed inset-4 md:inset-8 lg:inset-x-32 lg:inset-y-12 bg-white rounded-2xl shadow-2xl z-[70] flex flex-col overflow-hidden modal-enter">
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[10000002] transition-opacity duration-300" onClick={() => setIsNotesExpanded(false)} />
+          <div className="fixed inset-4 md:inset-8 lg:inset-x-32 lg:inset-y-12 bg-white rounded-2xl shadow-2xl z-[10000003] flex flex-col overflow-hidden modal-enter">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div>
                 <h2 className="text-xl font-bold text-slate-800">Project Notes</h2>
@@ -811,9 +811,9 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
 
       {/* Level 2 Modal: Add/Edit Note */}
       {isNoteModalOpen && (
-         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+         <div className="fixed inset-0 z-[10000004] flex items-center justify-center p-4">
            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300" onClick={() => setIsNoteModalOpen(false)} />
-           <div className="relative w-full max-w-[600px] bg-white rounded-2xl shadow-2xl z-[90] flex flex-col overflow-hidden modal-enter">
+           <div className="relative w-full max-w-[600px] bg-white rounded-2xl shadow-2xl z-[10000005] flex flex-col overflow-hidden modal-enter">
              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                <h2 className="text-lg font-bold text-slate-800">{editingNoteId ? 'Edit Note' : 'Log Project Note'}</h2>
                <button type="button" onClick={() => setIsNoteModalOpen(false)} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500"><Icons.Close /></button>

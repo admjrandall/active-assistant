@@ -305,17 +305,17 @@ const PersonWorkspace = ({ person, onClose, showToast, requestConfirm }) => {
 
   return (
     <>
-      <div className={`fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
-      
-      <div className={`fixed top-0 right-0 h-full w-full md:w-[600px] max-w-[95vw] acrylic-dark transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-50 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex flex-col h-full bg-white/95 md:rounded-l-2xl">
-          
-          <div className="px-4 md:px-8 py-4 md:py-6 border-b border-slate-200/50 flex justify-between items-center gap-4">
-            <input name="name" value={formData.name} onChange={handleChange} placeholder="Enter Member Name" maxLength={MAX_TITLE_LENGTH} className="text-2xl font-bold bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none w-full" />
-            <button type="button" onClick={handleClose} disabled={isSaving} className="p-2 rounded-full hover:bg-slate-200 text-slate-500 disabled:opacity-50"><Icons.Close /></button>
+      <div className={`fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[10000000] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
+
+      <div className={`fixed inset-y-0 right-0 w-full md:w-[600px] max-w-full acrylic-dark transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-[10000001] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex flex-col h-full bg-white/95 md:rounded-l-2xl overflow-hidden">
+
+          <div className="px-4 md:px-6 py-4 md:py-6 border-b border-slate-200/50 flex justify-between items-center gap-4 flex-shrink-0">
+            <input name="name" value={formData.name} onChange={handleChange} placeholder="Enter Member Name" maxLength={MAX_TITLE_LENGTH} className="text-2xl font-bold bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none w-full min-w-0" />
+            <button type="button" onClick={handleClose} disabled={isSaving} className="p-2 rounded-full hover:bg-slate-200 text-slate-500 disabled:opacity-50 flex-shrink-0"><Icons.Close /></button>
           </div>
-          
-          <div className="p-4 md:p-8 flex-1 overflow-y-auto flex flex-col gap-6 custom-scrollbar">
+
+          <div className="px-4 md:px-6 py-4 md:py-6 flex-1 overflow-y-auto flex flex-col gap-6 custom-scrollbar">
             
             {renderContactFields()}
 
@@ -332,7 +332,7 @@ const PersonWorkspace = ({ person, onClose, showToast, requestConfirm }) => {
             </div>
           </div>
           
-          <div className="p-4 md:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-3 md:rounded-bl-2xl">
+          <div className="px-4 md:px-6 py-4 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-3 md:rounded-bl-2xl flex-shrink-0">
             <button type="button" onClick={handleDelete} disabled={isSaving} className="text-rose-500 hover:text-rose-600 text-sm font-medium flex items-center gap-1 disabled:opacity-50"><Icons.Trash /> {person.isNew ? 'Discard Draft' : 'Remove Member'}</button>
             <button type="button" onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-2.5 rounded-lg text-sm font-medium shadow-lg hover:bg-indigo-700 active:scale-95 disabled:opacity-50">{isSaving ? 'Saving...' : 'Save & Close'}</button>
           </div>
@@ -342,8 +342,8 @@ const PersonWorkspace = ({ person, onClose, showToast, requestConfirm }) => {
       {/* Level 1 Modal: Expanded Communication History */}
       {isCommHistoryExpanded && (
         <>
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] transition-opacity duration-300" onClick={() => setIsCommHistoryExpanded(false)} />
-          <div className="fixed inset-4 md:inset-8 lg:inset-x-32 lg:inset-y-12 bg-white rounded-2xl shadow-2xl z-[70] flex flex-col overflow-hidden modal-enter">
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[10000002] transition-opacity duration-300" onClick={() => setIsCommHistoryExpanded(false)} />
+          <div className="fixed inset-4 md:inset-8 lg:inset-x-32 lg:inset-y-12 bg-white rounded-2xl shadow-2xl z-[10000003] flex flex-col overflow-hidden modal-enter">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <div>
                 <h2 className="text-xl font-bold text-slate-800">Communication History</h2>
@@ -423,9 +423,9 @@ const PersonWorkspace = ({ person, onClose, showToast, requestConfirm }) => {
 
       {/* Level 2 Modal: Add New Communication */}
       {isAddCommModalOpen && (
-         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+         <div className="fixed inset-0 z-[10000004] flex items-center justify-center p-4">
            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300" onClick={() => setIsAddCommModalOpen(false)} />
-           <div className="relative w-full max-w-[600px] bg-white rounded-2xl shadow-2xl z-[90] flex flex-col overflow-hidden modal-enter">
+           <div className="relative w-full max-w-[600px] bg-white rounded-2xl shadow-2xl z-[10000005] flex flex-col overflow-hidden modal-enter">
              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                <h2 className="text-lg font-bold text-slate-800">Log Communication</h2>
                <button type="button" onClick={() => setIsAddCommModalOpen(false)} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500"><Icons.Close /></button>
