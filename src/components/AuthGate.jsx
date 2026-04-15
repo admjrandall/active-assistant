@@ -97,7 +97,7 @@ export const AuthGate = ({ onUnlocked }) => {
       }
       onUnlocked({ mode: 'm365', account })
     } catch (err) {
-      console.error(err)
+      // Authentication error (details not logged for security)
       setError("Microsoft sign-in failed. Please check your configuration or network.")
     } finally {
       setLoading(false)
@@ -108,7 +108,7 @@ export const AuthGate = ({ onUnlocked }) => {
     setError(''); setLoading(true)
     try {
       if (isNewVault) {
-        if (password.length < 8) throw new Error("Password must be at least 8 characters.")
+        if (password.length < 12) throw new Error("Password must be at least 12 characters for adequate security.")
         VaultDB.loadSnapshot(VaultDB.getSnapshot()) // Load empty
         localStorage.setItem(STORAGE_MODE_KEY, 'offline')
         onUnlocked({ mode: 'offline', password })
@@ -136,6 +136,21 @@ export const AuthGate = ({ onUnlocked }) => {
     reader.readAsText(file)
   }
 
+  const handleSyncModeSubmit = async () => {
+    setError(''); setLoading(true)
+    try {
+      if (password.length < 12) {
+        throw new Error("Password must be at least 12 characters for adequate security.")
+      }
+
+      onUnlocked({ mode: 'sync', password })
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // ── Render Views ────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-50 p-4 z-[9999]">
@@ -152,10 +167,29 @@ export const AuthGate = ({ onUnlocked }) => {
         {/* VIEW 1: Mode Select */}
         {step === 'mode-select' && (
           <div className="flex flex-col gap-4">
-            <ChoiceCard icon="📁" title="Offline Work (Air-gapped)" desc="All data remains in local memory. You must provide an encrypted .dat file." 
-              onClick={() => { localStorage.setItem(STORAGE_MODE_KEY, 'offline'); setStep('offline-auth') }} />
-            <ChoiceCard icon="☁️" title="Home (Microsoft 365)" desc="Connect to your cloud Dataverse environment via Entra ID." 
-              onClick={() => setStep(savedM365 ? 'm365-auth' : 'm365-setup')} />
+            <ChoiceCard
+              icon="📁"
+              title="Offline Work (Air-gapped)"
+              desc="All data remains in local memory. You must provide an encrypted .dat file."
+              onClick={() => { localStorage.setItem(STORAGE_MODE_KEY, 'offline'); setStep('offline-auth') }}
+            />
+
+            <ChoiceCard
+              icon="🔄"
+              title="Offline-First Sync (Recommended)"
+              desc="Works offline with encrypted local storage. Auto-syncs with M365 when online."
+              onClick={() => {
+                localStorage.setItem(STORAGE_MODE_KEY, 'sync');
+                setStep('sync-auth')
+              }}
+            />
+
+            <ChoiceCard
+              icon="☁️"
+              title="Always Online (Microsoft 365)"
+              desc="Requires constant internet. Direct connection to Dataverse via Entra ID."
+              onClick={() => setStep(savedM365 ? 'm365-auth' : 'm365-setup')}
+            />
           </div>
         )}
 
@@ -201,11 +235,36 @@ export const AuthGate = ({ onUnlocked }) => {
             <input ref={fileInputRef} type="file" accept=".dat" onChange={handleFileChange} className="hidden" />
 
             <Field label={isNewVault ? "Create Password" : "Vault Password"} type="password" placeholder="••••••••••••" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleOfflineSubmit()} />
-            
+
             <div className="flex gap-3">
               <Btn onClick={() => setStep('mode-select')}>Back</Btn>
               <Btn primary loading={loading} onClick={handleOfflineSubmit}>
                 {isNewVault ? "Create Vault" : "Decrypt & Open"}
+              </Btn>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 5: Sync Mode Auth */}
+        {step === 'sync-auth' && (
+          <div className="flex flex-col gap-5">
+            <p className="text-sm text-slate-600 mb-2">
+              Offline-first mode stores encrypted data locally and syncs automatically with M365 when online.
+            </p>
+
+            <Field
+              label="Encryption Password"
+              type="password"
+              placeholder="At least 12 characters"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSyncModeSubmit()}
+            />
+
+            <div className="flex gap-3">
+              <Btn onClick={() => setStep('mode-select')}>Back</Btn>
+              <Btn primary loading={loading} onClick={handleSyncModeSubmit}>
+                Enable Sync Mode
               </Btn>
             </div>
           </div>

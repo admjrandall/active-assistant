@@ -46,7 +46,7 @@ const getAccessToken = async () => {
     const response = await app.acquireTokenSilent(request)
     return response.accessToken
   } catch (error) {
-    console.warn("Silent token acquisition failed, requiring interaction.", error)
+    console.warn("Token acquisition requires user interaction")
     // Fallback to popup if silent acquisition fails (e.g., expired refresh token)
     const response = await app.acquireTokenPopup(request)
     return response.accessToken
@@ -132,12 +132,17 @@ const mapToApp = (collectionName, record) => {
 
 export const DataverseDB = {
   // Generate a random GUID for new records if not utilizing Dataverse auto-gen
-  generateId: () => {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    })
-  },
+generateId: () => {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  
+  // Set version (4) and variant (RFC 4122)
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+},
 
   getAll: async (collection) => {
     const table = DATAVERSE_SCHEMA.tables[collection]
@@ -148,12 +153,14 @@ export const DataverseDB = {
     return result.value.map(record => mapToApp(collection, record))
   },
 
-  getById: async (collection, id) => {
-    const table = DATAVERSE_SCHEMA.tables[collection]
-    const map = DATAVERSE_SCHEMA.columnMaps[collection]
-    const result = await fetchFromDataverse(`${table}(${id})`)
-    return mapToApp(collection, result)
-  },
+getById: async (collection, id) => {
+  const table = DATAVERSE_SCHEMA.tables[collection]
+  const map = DATAVERSE_SCHEMA.columnMaps[collection]
+  const safeId = encodeURIComponent(String(id))
+  const result = await fetchFromDataverse(`${table}(${safeId})`)
+  return mapToApp(collection, result)
+},
+
 
   create: async (collection, data) => {
     const table = DATAVERSE_SCHEMA.tables[collection]
@@ -166,22 +173,26 @@ export const DataverseDB = {
     return mapToApp(collection, result)
   },
 
-  update: async (collection, id, data) => {
-    const table = DATAVERSE_SCHEMA.tables[collection]
-    const dvRecord = mapToDataverse(collection, data)
-    
-    await fetchFromDataverse(`${table}(${id})`, {
-      method: 'PATCH',
-      body: JSON.stringify(dvRecord)
-    })
-    // Prefer=return=representation is set, but to ensure sync we merge client side
-    return { ...data, id } 
-  },
+ update: async (collection, id, data) => {
+  const table = DATAVERSE_SCHEMA.tables[collection]
+  const dvRecord = mapToDataverse(collection, data)
+  const safeId = encodeURIComponent(String(id))
+  
+  await fetchFromDataverse(`${table}(${safeId})`, {
+    method: 'PATCH',
+    body: JSON.stringify(dvRecord)
+  })
+  // Prefer=return=representation is set, but to ensure sync we merge client side
+  return { ...data, id } 
+},
 
-  delete: async (collection, id) => {
-    const table = DATAVERSE_SCHEMA.tables[collection]
-    await fetchFromDataverse(`${table}(${id})`, {
-      method: 'DELETE'
-    })
-  }
+
+delete: async (collection, id) => {
+  const table = DATAVERSE_SCHEMA.tables[collection]
+  const safeId = encodeURIComponent(String(id))
+  await fetchFromDataverse(`${table}(${safeId})`, {
+    method: 'DELETE'
+  })
+}
+
 }

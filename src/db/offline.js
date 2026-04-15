@@ -27,7 +27,12 @@ export const OfflineDB = {
   getAll:     (store) => new Promise(res => { const r = createTx(store).getAll(); r.onsuccess = () => res(r.result || []) }),
   put:        (store, val) => new Promise(res => { const r = createTx(store, 'readwrite').put(val); r.onsuccess = () => res(val) }),
   delete:     (store, id) => new Promise(res => { const r = createTx(store, 'readwrite').delete(id); r.onsuccess = () => res() }),
-  generateId: () => `id-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+generateId: () => {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return 'id-' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+},
+
 }
 
 export async function seedDatabase() {

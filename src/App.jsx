@@ -28,6 +28,11 @@ import { ProjectsListView, ClientsListView, PeopleListView } from './components/
 import { ConfirmDialog }  from './components/ConfirmDialog.jsx'
 import { AuthGate }       from './components/AuthGate.jsx'
 
+import { initRxDB, closeRxDB } from './sync/RxDBSetup.js'
+import { RxDBWrapper } from './sync/RxDBWrapper.js'
+import { startAllReplications } from './sync/M365Replication.js'
+
+
 const App = () => {
   // ── Data ─────────────────────────────────────────────────────────────────────
   const [dbReady, setDbReady]               = useState(false)
@@ -57,6 +62,9 @@ const App = () => {
 
   // ── Storage mode ──────────────────────────────────────────────────────────────
   const [storageMode, setStorageModeState] = useState(getStorageMode())
+  // Sync mode state
+const [syncStatus, setSyncStatus] = useState({ online: false, syncing: false, lastSync: null })
+const [isSyncMode, setIsSyncMode] = useState(false)
   const [activeDB, setActiveDB]           = useState(() => getStorageMode() === 'm365' ? DataverseDB : VaultDB)
   const [m365AuthStatus, setM365AuthStatus] = useState('idle')
   const [m365UserName, setM365UserName]     = useState('')
@@ -160,28 +168,64 @@ const App = () => {
   }, []);
 
   // ── Called by AuthGate when successfully authenticated ────────────────────────
-  const handleAppUnlocked = useCallback(async ({ mode, password, account }) => {
-    if (mode === 'offline') {
-      vaultCtxRef.current = { password }
-      VaultDB.onDataChange(() => setSaveStatus('unsaved'))
-      setSaveStatus('saved')
-      setStorageMode('offline')
-      setStorageModeState('offline')
-      setActiveDB(VaultDB)
-      await loadAllData()
-      setDbReady(true)
-      showToast('Offline vault unlocked.')
-    } else if (mode === 'm365') {
-      setM365UserName(account?.name || account?.username || 'M365 User')
-      setM365AuthStatus('signed-in')
-      setStorageMode('m365')
-      setStorageModeState('m365')
-      setActiveDB(DataverseDB)
-      await loadAllData()
-      setDbReady(true)
-      showToast('Connected to Microsoft 365.')
-    }
-  }, [loadAllData])
+const handleAppUnlocked = useCallback(async ({ mode, password, account }) => {
+  if (mode === 'offline') {
+    vaultCtxRef.current = { password }
+    VaultDB.onDataChange(() => setSaveStatus('unsaved'))
+    setSaveStatus('saved')
+    setStorageMode('offline')
+    setStorageModeState('offline')
+    setActiveDB(VaultDB)
+    await loadAllData()
+    setDbReady(true)
+    showToast('Offline vault unlocked.')
+    
+  } else if (mode === 'sync') {
+    // NEW: RxDB Offline-first sync mode
+    vaultCtxRef.current = { password }
+    setIsSyncMode(true)
+    setStorageMode('sync')
+    setStorageModeState('sync')
+    
+    // Initialize RxDB with encryption
+    const rxdb = await initRxDB(password)
+    setActiveDB(RxDBWrapper)
+    
+    // Start M365 replication
+    const replication = startAllReplications(rxdb, (status) => {
+      if (status.pushed || status.pulled) {
+        const msg = status.collection ? 
+          `Synced ${status.collection}: ${status.pushed || 0} up, ${status.pulled || 0} down` :
+          'Sync in progress...';
+        showToast(msg)
+      }
+      setSyncStatus(prev => ({
+        ...prev,
+        online: navigator.onLine,
+        syncing: status.syncing || false,
+        lastSync: new Date().toISOString()
+      }))
+    })
+    
+    // Store replication state for cleanup
+    window._rxdbReplication = replication
+    
+    await loadAllData()
+    setDbReady(true)
+    showToast('RxDB Sync Mode enabled. Works offline + auto-syncs with M365.')
+    
+  } else if (mode === 'm365') {
+    setM365UserName(account?.name || account?.username || 'M365 User')
+    setM365AuthStatus('signed-in')
+    setStorageMode('m365')
+    setStorageModeState('m365')
+    setActiveDB(DataverseDB)
+    await loadAllData()
+    setDbReady(true)
+    showToast('Connected to Microsoft 365.')
+  }
+}, [loadAllData])
+
 
   // ── Switch Environment / Lock Session ─────────────────────────────────────────
   const handleLockSession = useCallback(async () => {
@@ -191,6 +235,17 @@ const App = () => {
         await handleSaveVault(true); 
       }
     } finally {
+      // Stop RxDB replication
+if (window._rxdbReplication) {
+  window._rxdbReplication.cancelAll()
+  window._rxdbReplication = null
+}
+
+// Close RxDB
+if (isSyncMode) {
+  await closeRxDB()
+}
+
       VaultDB.clear()
       vaultCtxRef.current = null
       setFileHandle(null)
@@ -320,14 +375,21 @@ const App = () => {
                     onClick={() => setIsEnvMenuOpen(!isEnvMenuOpen)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-sm"
                   >
-                    <div className={`w-2 h-2 rounded-full ${
-                      storageMode === 'm365' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 
-                      saveStatus === 'saving' ? 'bg-indigo-400 animate-pulse' :
-                      saveStatus === 'unsaved' ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] animate-pulse' : 
-                      saveStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
-                    }`} />
+<div className={`w-2 h-2 rounded-full ${
+  storageMode === 'sync' ? (
+    syncStatus.syncing ? 'bg-indigo-400 animate-pulse' :
+    syncStatus.online ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+    'bg-amber-400'
+  ) :
+  storageMode === 'm365' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 
+  saveStatus === 'saving' ? 'bg-indigo-400 animate-pulse' :
+  saveStatus === 'unsaved' ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] animate-pulse' : 
+  saveStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+}`} />
+
                     <span className="text-sm font-medium text-slate-700 hidden sm:block">
-                      {storageMode === 'm365' ? 'M365 Sync' : 'Local Vault'}
+                      {storageMode === 'sync' ? (syncStatus.online ? 'Auto-Sync' : 'Offline') :
+                       storageMode === 'm365' ? 'M365 Sync' : 'Local Vault'}
                     </span>
                     <span className="text-xs text-slate-400 ml-1">▼</span>
                   </button>

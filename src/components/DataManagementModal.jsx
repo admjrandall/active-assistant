@@ -65,7 +65,29 @@ const DataManagementModal = ({ isOpen, onClose, showToast }) => {
 
   reader.onload = async (event) => {
 try {
-  const importedData = isCSV ? csvToJson(event.target.result) : JSON.parse(event.target.result);
+  let importedData;
+try {
+  const rawData = isCSV ? csvToJson(event.target.result) : JSON.parse(event.target.result);
+  
+  // Validate structure
+  if (!Array.isArray(rawData)) {
+    throw new Error('Import data must be an array');
+  }
+  
+  // Prevent prototype pollution
+  importedData = rawData.map(item => {
+    const safe = {};
+    for (const key in item) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+      safe[key] = item[key];
+    }
+    return safe;
+  });
+} catch (error) {
+  showToast(`Import failed: ${error.message}`);
+  return;
+}
+
   let count = 0;
 
   for (const item of importedData) {

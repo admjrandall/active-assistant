@@ -34,8 +34,12 @@ export const VaultDB = {
     return Promise.resolve()
   },
 
-  generateId: () =>
-    `v-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+ generateId: () => {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return 'v-' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+},
+
 
   // --- Vault-specific methods (not on OfflineDB) ---
 
