@@ -3,8 +3,12 @@
 // M365 config is now dynamic and stored in localStorage upon first setup.
 // ============================================================================
 
-export const STORAGE_MODE_KEY = 'aa-storage-mode'
+import { DATAVERSE_COLUMN_MAPS, JSON_FIELDS } from './db/schemas.js'
+
+export const STORAGE_MODE_KEY = 'aa-storage-mode'  // Now only 'offline' or 'cloud'
 export const M365_SETUP_KEY   = 'aa-m365-setup'
+export const CURRENT_USER_KEY = 'aa-current-user'  // NEW: Current user session (Cloud mode)
+export const DEVICE_ID_KEY    = 'aa-device-id'     // NEW: Unique device identifier
 
 // Retrieve user-provided M365 settings
 export const getM365Config = () => {
@@ -17,53 +21,79 @@ export const getM365Config = () => {
   }
 }
 
-// Fixed schema definitions for Dataverse mapping
+// NEW: Get or create device ID
+export const getDeviceId = () => {
+  let deviceId = localStorage.getItem(DEVICE_ID_KEY)
+  if (!deviceId) {
+    deviceId = `device-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+    localStorage.setItem(DEVICE_ID_KEY, deviceId)
+  }
+  return deviceId
+}
+
+// NEW: Get current user session
+export const getCurrentUser = () => {
+  const stored = localStorage.getItem(CURRENT_USER_KEY)
+  if (!stored) return null
+  try {
+    return JSON.parse(stored)
+  } catch {
+    return null
+  }
+}
+
+// NEW: Set current user session
+export const setCurrentUser = (user) => {
+  if (user) {
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user))
+  } else {
+    localStorage.removeItem(CURRENT_USER_KEY)
+  }
+}
+
+// Dataverse schema (imported from schemas.js)
 export const DATAVERSE_SCHEMA = {
   tables: {
-    projects:       'aa_projects',
-    tasks:          'aa_tasks',
-    people:         'aa_people',
-    departments:    'aa_departments',
-    clients:        'aa_clients',
-    communications: 'aa_communications',
+    users: 'users',
+    workspaces: 'workspaces',
+    permissions: 'permissions',
+    auditLogs: 'auditlogs',
+    comments: 'comments',
+    notifications: 'notifications',
+    timeEntries: 'timeentries',
+    projects: 'projects',
+    tasks: 'tasks',
+    people: 'people',
+    departments: 'departments',
+    clients: 'clients',
+    communications: 'communications',
   },
-  columnMaps: {
-    projects: {
-      id: 'aa_projectid', name: 'aa_name', deptId: 'aa_departmentid',
-      clientId: 'aa_clientid', ownerId: 'aa_ownerid', stage: 'aa_stage',
-      priority: 'aa_priority', sortOrder: 'aa_sortorder', x: 'aa_canvas_x',
-      y: 'aa_canvas_y', startDate: 'aa_startdate', dueDate: 'aa_duedate',
-      narrative: 'aa_narrative', notes: 'aa_notes_json', lastTouch: 'aa_lasttouch',
-      workspaceLayout: 'aa_workspace_layout_json',
-    },
-    tasks: {
-      id: 'aa_taskid', projectId: 'aa_projectid', title: 'aa_title',
-      description: 'aa_description', assigneeId: 'aa_assigneeid',
-      dueDate: 'aa_duedate', effort: 'aa_effort', done: 'aa_done',
-      subtasks: 'aa_subtasks_json',
-    },
-    people: {
-      id: 'aa_personid', name: 'aa_name', email: 'aa_email',
-      role: 'aa_role', x: 'aa_canvas_x', y: 'aa_canvas_y',
-    },
-    departments: { id: 'aa_departmentid', name: 'aa_name' },
-    clients: {
-      id: 'aa_clientid', name: 'aa_name', contactName: 'aa_contactname',
-      email: 'aa_email', phone: 'aa_phone', notes: 'aa_notes',
-      x: 'aa_canvas_x', y: 'aa_canvas_y',
-    },
-    communications: {
-      id: 'aa_communicationid', clientId: 'aa_clientid', personId: 'aa_personid',
-      date: 'aa_date', type: 'aa_type', notes: 'aa_notes',
-    },
-  },
-  jsonFields: {
-    projects: ['notes', 'workspaceLayout'],
-    tasks: ['subtasks'],
-  },
+  columnMaps: DATAVERSE_COLUMN_MAPS,
+  jsonFields: JSON_FIELDS,
 }
 
 export const MAX_TITLE_LENGTH = 500
 export const MAX_TEXT_LENGTH = 10000
 export const CLOSE_ANIMATION_MS = 400
 export const MAX_ZINDEX = 999999
+
+// NEW: Password requirements
+export const PASSWORD_REQUIREMENTS = {
+  minLength: 12,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumbers: true,
+  requireSpecialChars: true,
+}
+
+// NEW: Session timeout settings (minutes)
+export const SESSION_TIMEOUT_OPTIONS = [5, 15, 30, 60, 0] // 0 = never
+
+// NEW: Default user preferences
+export const DEFAULT_USER_PREFERENCES = {
+  theme: 'light',
+  autoLockMinutes: 15,
+  defaultView: 'canvas',
+  emailNotifications: true,
+  pushNotifications: true,
+}

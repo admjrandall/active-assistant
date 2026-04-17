@@ -1,38 +1,43 @@
-// ============================================================================
-// ACTIVE DB — routes to the correct storage provider based on mode.
-// Modes:
-//   'offline' → VaultDB  (in-memory, AES-256-GCM encrypted)
-//   'sync'    → RxDBWrapper (RxDB with M365 sync)
-//   'm365'    → DataverseDB (Microsoft 365 / Dataverse)
-// ============================================================================
+import { VaultDB }    from '../vault/VaultDB.js'
+import { getAdapter } from './adapterRegistry.js'
 import { STORAGE_MODE_KEY } from '../config.js'
-import { OfflineDB }        from './offline.js'
-import { DataverseDB }      from './m365.js'
-import { VaultDB }          from '../vault/VaultDB.js'
-import { RxDBWrapper }      from '../sync/RxDBWrapper.js'
 
-export { OfflineDB, DataverseDB, VaultDB, RxDBWrapper }
-export { openDatabase, seedDatabase } from './offline.js'
-export { getMsalApp }                 from './m365.js'
+let currentMode = null
+let currentDB   = null
 
-const _stored = localStorage.getItem(STORAGE_MODE_KEY)
-let _activeMode = (_stored === 'm365') ? 'm365' : 
-                  (_stored === 'sync') ? 'sync' : 
-                  (_stored === 'offline') ? 'offline' : 'offline'
-
-function resolveDB(mode) {
-  if (mode === 'm365')    return DataverseDB
-  if (mode === 'sync')    return RxDBWrapper
-  if (mode === 'offline') return VaultDB
-  return VaultDB // default
+export const getStorageMode = () => {
+  if (currentMode) return currentMode
+  const stored = localStorage.getItem(STORAGE_MODE_KEY)
+  if (stored === 'offline' || stored === 'cloud') {
+    currentMode = stored
+    return stored
+  }
+  return null
 }
 
-export let DB = resolveDB(_activeMode)
-
-export function setStorageMode(mode) {
-  _activeMode = mode
-  DB = resolveDB(mode)
+export const setStorageMode = (mode) => {
+  if (mode !== 'offline' && mode !== 'cloud') {
+    throw new Error(`Invalid storage mode: ${mode}. Must be 'offline' or 'cloud'.`)
+  }
+  currentMode = mode
   localStorage.setItem(STORAGE_MODE_KEY, mode)
+  currentDB = mode === 'offline' ? VaultDB : getAdapter()
 }
 
-export function getStorageMode() { return _activeMode }
+export const getDB = () => {
+  if (!currentDB) {
+    const mode = getStorageMode()
+    if (mode === 'offline') currentDB = VaultDB
+    else if (mode === 'cloud') currentDB = getAdapter()
+  }
+  return currentDB
+}
+
+// Backwards-compat: DataverseDB proxy used throughout App.jsx
+export const DataverseDB = {
+  get generateId() { return getAdapter().generateId.bind(getAdapter()) },
+  get getAll()     { return getAdapter().getAll.bind(getAdapter()) },
+  get getById()    { return getAdapter().getById.bind(getAdapter()) },
+  get put()        { return getAdapter().put.bind(getAdapter()) },
+  get delete()     { return getAdapter().delete.bind(getAdapter()) },
+}

@@ -59,3 +59,9 @@ export async function decryptVault(payload, password) {
   )
   return JSON.parse(new TextDecoder().decode(plain))
 }
+
+export async function rotateVaultPassword(snapshot, oldPassword, newPassword) {
+  const verificationEnvelope = await encryptVault(snapshot, oldPassword)
+  const decryptedSnapshot = await decryptVault(verificationEnvelope, oldPassword)
+  return encryptVault(decryptedSnapshot, newPassword)
+}

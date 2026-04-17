@@ -5,6 +5,7 @@
 // ============================================================================
 import { PublicClientApplication } from '@azure/msal-browser'
 import { getM365Config, DATAVERSE_SCHEMA } from '../config.js'
+import { enqueueOperation } from '../utils/backgroundSync.js'
 
 let msalInstance = null
 
@@ -132,17 +133,15 @@ const mapToApp = (collectionName, record) => {
 
 export const DataverseDB = {
   // Generate a random GUID for new records if not utilizing Dataverse auto-gen
-generateId: () => {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  
-  // Set version (4) and variant (RFC 4122)
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  
-  const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
-},
+  generateId: () => {
+    const bytes = new Uint8Array(16)
+    crypto.getRandomValues(bytes)
+    bytes[6] = (bytes[6] & 0x0f) | 0x40
+    bytes[8] = (bytes[8] & 0x3f) | 0x80
+
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+  },
 
   getAll: async (collection) => {
     const table = DATAVERSE_SCHEMA.tables[collection]
@@ -153,13 +152,12 @@ generateId: () => {
     return result.value.map(record => mapToApp(collection, record))
   },
 
-getById: async (collection, id) => {
-  const table = DATAVERSE_SCHEMA.tables[collection]
-  const map = DATAVERSE_SCHEMA.columnMaps[collection]
-  const safeId = encodeURIComponent(String(id))
-  const result = await fetchFromDataverse(`${table}(${safeId})`)
-  return mapToApp(collection, result)
-},
+  getById: async (collection, id) => {
+    const table = DATAVERSE_SCHEMA.tables[collection]
+    const safeId = encodeURIComponent(String(id))
+    const result = await fetchFromDataverse(`${table}(${safeId})`)
+    return mapToApp(collection, result)
+  },
 
 
   create: async (collection, data) => {
@@ -173,26 +171,56 @@ getById: async (collection, id) => {
     return mapToApp(collection, result)
   },
 
- update: async (collection, id, data) => {
-  const table = DATAVERSE_SCHEMA.tables[collection]
-  const dvRecord = mapToDataverse(collection, data)
-  const safeId = encodeURIComponent(String(id))
-  
-  await fetchFromDataverse(`${table}(${safeId})`, {
-    method: 'PATCH',
-    body: JSON.stringify(dvRecord)
-  })
-  // Prefer=return=representation is set, but to ensure sync we merge client side
-  return { ...data, id } 
-},
+  update: async (collection, id, data) => {
+    const table = DATAVERSE_SCHEMA.tables[collection]
+    const dvRecord = mapToDataverse(collection, data)
+    const safeId = encodeURIComponent(String(id))
 
+    await fetchFromDataverse(`${table}(${safeId})`, {
+      method: 'PATCH',
+      body: JSON.stringify(dvRecord)
+    })
 
-delete: async (collection, id) => {
-  const table = DATAVERSE_SCHEMA.tables[collection]
-  const safeId = encodeURIComponent(String(id))
-  await fetchFromDataverse(`${table}(${safeId})`, {
-    method: 'DELETE'
-  })
-}
+    return { ...data, id }
+  },
 
+  put: async (collection, data) => {
+    if (!data?.id) {
+      throw new Error(`DataverseDB.put requires an id for ${collection}.`)
+    }
+
+    const record = { ...data, lastModified: new Date().toISOString() }
+
+    if (!navigator.onLine) {
+      await enqueueOperation(collection, 'put', record)
+      return record
+    }
+
+    try {
+      await DataverseDB.getById(collection, record.id)
+      return DataverseDB.update(collection, record.id, record)
+    } catch (error) {
+      const message = String(error?.message || '')
+      const isMissingRecord = message.includes('404') || message.includes('Not Found')
+
+      if (!isMissingRecord) {
+        throw error
+      }
+
+      return DataverseDB.create(collection, record)
+    }
+  },
+
+  delete: async (collection, id) => {
+    if (!navigator.onLine) {
+      await enqueueOperation(collection, 'delete', { id, lastModified: new Date().toISOString() })
+      return
+    }
+
+    const table = DATAVERSE_SCHEMA.tables[collection]
+    const safeId = encodeURIComponent(String(id))
+    await fetchFromDataverse(`${table}(${safeId})`, {
+      method: 'DELETE'
+    })
+  }
 }

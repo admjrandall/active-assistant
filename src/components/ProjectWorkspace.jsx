@@ -4,6 +4,7 @@ import { Icons } from './Icons.jsx'
 import { DynamicCard } from './DynamicCard.jsx'
 import { sanitizeInput, debounce } from '../utils.js'
 import { MAX_TITLE_LENGTH, MAX_TEXT_LENGTH, CLOSE_ANIMATION_MS, MAX_ZINDEX } from '../config.js'
+import { CommentThread } from './collaboration/CommentThread.jsx'
 
 // ============================================================================
 const ALLOWED_TASK_FIELDS = ['title', 'description', 'done', 'assigneeId', 'dueDate', 'effort'];
@@ -622,11 +623,20 @@ const ProjectWorkspace = ({ project, onClose, showToast, requestConfirm }) => {
               <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
                   <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                    <Icons.Settings size={16} className="text-slate-500" /> 
+                    <Icons.Settings size={16} className="text-slate-500" />
                     Details & Routing
                   </h3>
                 </div>
                 {renderDrawerDetails()}
+              </div>
+
+              {/* Comments Section */}
+              <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm">
+                <CommentThread
+                  resourceType="project"
+                  resourceId={project.id}
+                  showToast={showToast}
+                />
               </div>
             </div>
 

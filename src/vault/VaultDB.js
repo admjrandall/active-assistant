@@ -5,7 +5,7 @@
 // or when lock() is called explicitly.
 // ============================================================================
 
-const STORES = ['projects', 'tasks', 'people', 'departments', 'clients', 'communications']
+const STORES = ['projects', 'tasks', 'people', 'departments', 'clients', 'communications', 'users', 'workspaces', 'comments', 'notifications', 'permissions', 'auditLogs', 'timeEntries']
 
 // Single in-module state object — one vault per browser tab session
 const _state   = Object.fromEntries(STORES.map(s => [s, []]))
